@@ -43,3 +43,7 @@ Use both forks' final analytics heads. Follow indexer docs/ref/modules/case-mana
 ## Incident automation phase gate
 
 Use both forks' final automation heads. Follow indexer docs/ref/modules/case-management/incident-automation-execution.md and all six integrated qualification groups. Apply additive automation_runs mapping before upgraded writers. Keep execution disabled until qualified. Test actual separated grants, exact approval, first-match/current-revision semantics, atomic action/receipt CAS, audit outbox recovery, rule authoring/preview/history, scheduler TLS/cursor and failure counts. 11 local scheduler tests, 59 standalone TypeScript assertions and 42 source checks passed; full build and actual OpenSearch/security/browser/runtime qualification outstanding. This is a bounded latest-state sweep, not an event-stream guarantee or executable SOAR. Record exact SHAs and live evidence.
+
+## Governed SOAR native scan gate
+
+Follow indexer docs/ref/modules/case-management/incident-soar-scan.md. Keep SOAR off until both builds, actual RC2 scoped manager API and indexer RBAC, one-shot reservation/outbox, preflight enrollment/agent identity, ambiguous dispatch and independent reconciliation have been qualified on isolated test endpoint. Eight mocked Python tests and 24 source checks passed; Java/Jest, browser and live API tests remain outstanding. Manager acknowledgement is not execution verification. No legacy active-response path assumed, no arbitrary command or automated endpoint action.
