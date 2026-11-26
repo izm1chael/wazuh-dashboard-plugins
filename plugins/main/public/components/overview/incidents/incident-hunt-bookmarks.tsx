@@ -7,6 +7,7 @@ export function IncidentHuntBookmarks({ bookmarks, disabled, command, openRelate
   bookmarks: HuntBookmark[]; disabled: boolean; command: (value: IndexerIncidentCommand)=>Promise<void>; openRelated?: (id:string)=>void;
 }) {
   const [selected,setSelected]=useState('');
+  const [newQuery,setNewQuery]=useState(false);
   const [reason,setReason]=useState('');
   const current=bookmarks.find(row=>row.id===selected && row.state==='saved');
   return <>
@@ -14,12 +15,14 @@ export function IncidentHuntBookmarks({ bookmarks, disabled, command, openRelate
     <EuiText size='s'>Saved definitions only, not search results or evidence. Shared with authorized case readers. Withdrawal retains the original query in history. Rerunning always checks current source permissions.</EuiText>
     <EuiSpacer size='s' />
     <EuiText size='s'>{bookmarks.length} of 20 lifetime bookmarks.</EuiText>
+    <EuiButtonEmpty disabled={disabled || bookmarks.length>=20} onClick={()=>{setSelected('');setNewQuery(value=>!value);}}>{newQuery?'Close new hunt':'Prepare new case hunt'}</EuiButtonEmpty>
+    {newQuery && <IncidentHuntPanel disabled={disabled} attach={command} saveBookmark={command} openRelated={openRelated} />}
     {bookmarks.map(row=><EuiPanel key={row.id} paddingSize='s' hasShadow={false} hasBorder>
       <EuiText size='s'><strong>{row.label}</strong> · {row.state} · {row.created_by} · {row.created_at}
         <p>{row.query.field} · {row.query.values.join(', ')} · {row.query.from} to {row.query.until}</p>
         {row.state==='withdrawn' && <p>Withdrawn by {row.withdrawn_by} · {row.withdrawn_at} · {row.withdrawal_reason}</p>}
       </EuiText>
-      {row.state==='saved' && <EuiButtonEmpty disabled={disabled} onClick={()=>{setSelected(row.id);setReason('');}}>Load saved query</EuiButtonEmpty>}
+      {row.state==='saved' && <EuiButtonEmpty disabled={disabled} onClick={()=>{setSelected(row.id);setReason('');setNewQuery(false);}}>Load saved query</EuiButtonEmpty>}
     </EuiPanel>)}
     {current && <>
       <EuiSpacer size='s' />
