@@ -54,6 +54,15 @@ describe('experimental incident workspace', () => {
     await waitFor(() => expect(api.list).toHaveBeenLastCalledWith({ queue: 'unassigned', limit: 50, after: { id: ID, time: 123 } }));
   });
 
+  test('opens the personal handover queue without supplying a caller identity', async () => {
+    const { api, open, create } = setup();
+    render(<IncidentQueue api={api as IncidentApi} open={open} create={create} />);
+    await screen.findByRole('button', { name: item.title });
+    fireEvent.change(screen.getByLabelText('Queue'), { target: { value: 'handover' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith({ queue: 'handover', limit: 50, after: undefined }));
+  });
+
   test('retains the same create request and content after ambiguous failure', async () => {
     const { api, open, back } = setup();
     api.create.mockRejectedValueOnce(new Error('network lost'));
