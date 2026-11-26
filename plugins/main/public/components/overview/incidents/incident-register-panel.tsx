@@ -4,8 +4,8 @@ import { EVIDENCE_TYPES, RELATION_TYPES } from '../../../../common/incidents/con
 import type { CollaborationPage, EvidenceArtifactType, IncidentRelationType, IncidentSummary, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 import { validateTags } from '../../../../common/incidents/investigation-register-validation';
 
-export function IncidentRegisterPanel({ page, incident, disabled, command }: {
-  page: CollaborationPage; incident: IncidentSummary; disabled: boolean; command: (value: IndexerIncidentCommand) => Promise<void>;
+export function IncidentRegisterPanel({ page, incident, disabled, command, openRelated }: {
+  page: CollaborationPage; incident: IncidentSummary; disabled: boolean; command: (value: IndexerIncidentCommand) => Promise<void>; openRelated?: (id: string) => void;
 }) {
   const [tags, setTags] = useState((incident.tags ?? []).join(', '));
   const [target, setTarget] = useState('');
@@ -40,6 +40,7 @@ export function IncidentRegisterPanel({ page, incident, disabled, command }: {
     {relations.map(row => <EuiPanel key={row.id} hasShadow={false} hasBorder>
       <EuiText size='s'><strong>{row.type.replace(/_/g, ' ')}</strong> · {row.target_id}<br />
         {row.reason}<br />{row.recorded_by} · {row.recorded_at}</EuiText>
+      {openRelated && <EuiButtonEmpty onClick={() => openRelated(row.target_id)}>Open referenced incident</EuiButtonEmpty>}
       <EuiButtonEmpty disabled={blocked} onClick={() => { setSelected('relation:' + row.id); setReason(''); }}>Remove relation</EuiButtonEmpty>
     </EuiPanel>)}
     <EuiFormRow label='Related incident UUID'><EuiFieldText value={target} maxLength={36} disabled={blocked} onChange={e => setTarget(e.target.value)} /></EuiFormRow>
