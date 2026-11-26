@@ -333,6 +333,13 @@ function validateCursor(cursor: QueueCursor): void {
 
 function validateSummary(incident: IncidentSummary, id?: string, revision?: number): void {
   if (!incident) throw new Error('Invalid incident projection');
+  const offer = incident.handover;
+  if (offer !== undefined && offer !== null &&
+      (typeof offer !== 'object' || Object.keys(offer).length !== 3 ||
+       typeof offer.target !== 'string' || !offer.target.trim() || offer.target.length > 1024 ||
+       typeof offer.offered_by !== 'string' || offer.offered_by !== incident.owner || offer.target === offer.offered_by ||
+       typeof offer.offered_at !== 'string' || !Number.isFinite(Date.parse(offer.offered_at)) ||
+       incident.status === 'closed')) throw new Error('Invalid incident handover projection');
   validateIncidentId(incident.id);
   if (!Number.isSafeInteger(incident.revision) || incident.revision < 1 ||
       (revision !== undefined && incident.revision !== revision) ||
