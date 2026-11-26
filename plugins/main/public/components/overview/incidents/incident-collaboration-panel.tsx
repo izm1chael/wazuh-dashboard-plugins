@@ -5,9 +5,9 @@ import type { IncidentApi } from './incident-api';
 import { IncidentRegisterPanel } from './incident-register-panel';
 import { IncidentPlaybooksPanel } from './incident-playbooks-panel';
 
-export function IncidentCollaborationPanel({ api, incident, disabled, command }: {
+export function IncidentCollaborationPanel({ api, incident, disabled, command, openRelated }: {
   api: IncidentApi; incident: IncidentSummary; disabled: boolean;
-  command: (value: IndexerIncidentCommand) => Promise<void>;
+  command: (value: IndexerIncidentCommand) => Promise<void>; openRelated?: (id: string) => void;
 }) {
   const [page, setPage] = useState<CollaborationPage>();
   const [before, setBefore] = useState(0);
@@ -51,7 +51,7 @@ export function IncidentCollaborationPanel({ api, incident, disabled, command }:
       <EuiButton type='submit' disabled={tasksBlocked || !title.trim() || tasks.length >= 100}>Create task</EuiButton>
     </form>
     <EuiSpacer size='l' />
-    {page && !stale && <IncidentRegisterPanel page={page} incident={incident} disabled={tasksBlocked} command={command} />}
+    {page && !stale && <IncidentRegisterPanel openRelated={openRelated} page={page} incident={incident} disabled={tasksBlocked} command={command} />}
     <EuiTitle size='s'><h2>Analyst notes</h2></EuiTitle>
     <EuiSpacer size='s' />
     <EuiText size='s'>Notes are append-only and visible to authorized incident readers. Do not include restricted finding data or secrets.</EuiText>
