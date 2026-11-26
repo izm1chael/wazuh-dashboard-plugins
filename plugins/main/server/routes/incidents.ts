@@ -128,6 +128,21 @@ export function registerIncidentRoutes(router: IRouter) {
     request.body.expected_revision, request.body.id, request.body.sighting_revision, request.body.reason)));
 
   router.post({
+    path: '/indexer/incident-behaviour/assess',
+    validate: { body: schema.object({
+      field: schema.oneOf(HUNT_FIELDS.map(value => schema.literal(value))),
+      values: schema.arrayOf(schema.string({ minLength: 1, maxLength: 256 }), { minSize: 1, maxSize: 5 }),
+      from: schema.string({ minLength: 20, maxLength: 30 }),
+      until: schema.string({ minLength: 20, maxLength: 30 }),
+    }) },
+  }, async (context, request, response) => respond(response, async () => {
+    if (huntRunning) throw { statusCode: 429 };
+    huntRunning = true;
+    try { return await client(context).assessBehaviour(request.body); }
+    finally { huntRunning = false; }
+  }));
+
+  router.post({
     path: '/indexer/incident-entity/investigate',
     validate: { body: schema.object({
       field: schema.oneOf(HUNT_FIELDS.map(value => schema.literal(value))),
