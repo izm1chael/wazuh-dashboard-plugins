@@ -23,6 +23,7 @@ export interface IncidentSummary {
   priority: Priority;
   tlp: Tlp;
   owner: string | null;
+  handover?: { target: string; offered_by: string; offered_at: string } | null;
   created_by: string;
   updated_by: string;
   created_at: string;
@@ -40,6 +41,8 @@ export interface IncidentSummary {
 
 export type IndexerIncidentCommand =
   | { kind: 'assign-self' | 'unassign' | 'start-triage' | 'activate' }
+  | { kind: 'offer-handover'; target: string; reason: string }
+  | { kind: 'accept-handover' | 'cancel-handover'; reason: string }
   | { kind: 'edit'; title?: string; description?: string; severity?: Severity; priority?: Priority; tlp?: Tlp }
   | { kind: 'close'; classification: Classification; reason: string }
   | { kind: 'reopen'; reason: string }
