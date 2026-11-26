@@ -9,6 +9,7 @@ import { IncidentTuningPanel } from './incident-tuning-panel';
 import { IncidentIndicatorPanel } from './incident-indicator-panel';
 import { IncidentHuntPanel } from './incident-hunt-panel';
 import { IncidentMetricsPanel } from './incident-metrics-panel';
+import { IncidentAutomationPanel } from './incident-automation-panel';
 import { AnalyticsHealthPanel } from './analytics-health-panel';
 import { CorrelationPreviewPanel } from './correlation-preview-panel';
 
@@ -18,8 +19,8 @@ export function IncidentWorkspace() {
   const back = () => history.push('/incidents');
   const open = (id: string) => history.push('/incidents/' + encodeURIComponent(id));
   return <EuiPage><EuiPageBody><EuiPanel paddingSize='l'>
-    {incidentId === 'analytics' ? <AnalyticsHealthPanel back={back} /> : incidentId === 'indicators' ? <IncidentIndicatorPanel back={back} /> : incidentId === 'hunt' ? <IncidentHuntPanel back={back} /> : incidentId === 'tuning' ? <IncidentTuningPanel back={back} /> : incidentId === 'metrics' ? <IncidentMetricsPanel back={back} /> : incidentId === 'correlation' ? <CorrelationPreviewPanel back={back} /> : incidentId === 'new' ? <IncidentCreate api={incidentApi} back={back} open={open} /> :
+    {incidentId === 'automation' ? <IncidentAutomationPanel back={back} /> : incidentId === 'analytics' ? <AnalyticsHealthPanel back={back} /> : incidentId === 'indicators' ? <IncidentIndicatorPanel back={back} /> : incidentId === 'hunt' ? <IncidentHuntPanel back={back} /> : incidentId === 'tuning' ? <IncidentTuningPanel back={back} /> : incidentId === 'metrics' ? <IncidentMetricsPanel back={back} /> : incidentId === 'correlation' ? <CorrelationPreviewPanel back={back} /> : incidentId === 'new' ? <IncidentCreate api={incidentApi} back={back} open={open} /> :
       incidentId ? <IncidentDetail key={incidentId} id={incidentId} api={incidentApi} back={back} openRelated={open} /> :
-        <><EuiButtonEmpty onClick={() => history.push('/incidents/analytics')}>Analytics execution health</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/indicators')}>Threat intelligence</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/hunt')}>Threat hunting</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/tuning')}>Detection tuning evaluation</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/metrics')}>SOC reporting</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/correlation')}>Analytics rule design and preview</EuiButtonEmpty><EuiSpacer size='s' /><IncidentQueue api={incidentApi} open={open} create={() => history.push('/incidents/new')} /></>}
+        <><EuiButtonEmpty onClick={() => history.push('/incidents/automation')}>Automation rules</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/analytics')}>Analytics execution health</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/indicators')}>Threat intelligence</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/hunt')}>Threat hunting</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/tuning')}>Detection tuning evaluation</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/metrics')}>SOC reporting</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/correlation')}>Analytics rule design and preview</EuiButtonEmpty><EuiSpacer size='s' /><IncidentQueue api={incidentApi} open={open} create={() => history.push('/incidents/new')} /></>}
   </EuiPanel></EuiPageBody></EuiPage>;
 }
