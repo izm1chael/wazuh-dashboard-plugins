@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiDescriptionList, EuiFlexGroup, EuiFlexItem, EuiFormRow, EuiSelect, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import type { Classification, IncidentSummary, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
+import { IncidentActivityPanel } from './incident-activity-panel';
+import { IncidentFindingsPanel } from './incident-findings-panel';
 
 export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string; back: () => void }) {
   const [incident, setIncident] = useState<IncidentSummary>();
@@ -101,6 +103,10 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
           {incident.status === 'closed' ? 'Reopen incident' : 'Close incident'}
         </EuiButton>
       </>}
+      <EuiSpacer size='l' />
+      <IncidentFindingsPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed' || !incident.owner} command={command} />
+      <EuiSpacer size='l' />
+      <IncidentActivityPanel key={id + ':' + incident.revision + ':' + refresh} api={api} id={id} />
     </>}
   </>;
 }

@@ -19,6 +19,8 @@ const item: IncidentSummary = {
 
 function setup() {
   const api = {
+    activity: jest.fn().mockResolvedValue({ events: [], observed_revision: 1, activity_pending: false }),
+    findings: jest.fn().mockResolvedValue({ findings: [], revision: 1, unavailable_count: 0 }),
     list: jest.fn().mockResolvedValue({ incidents: [item] }),
     get: jest.fn().mockResolvedValue(item),
     create: jest.fn().mockResolvedValue({ incident: item, activity_delivery: 'delivered', replayed: false }),

@@ -1,4 +1,4 @@
-import type { CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import type { ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 import { validateIncidentId } from './incident-id';
 
@@ -78,6 +78,44 @@ export class IndexerIncidentClient {
     if (!body) throw new Error('Invalid incident detail');
     validateSummary(body.incident, id);
     return body.incident;
+  }
+
+  async activity(id: string, before = 0, limit = 50): Promise<ActivityPage> {
+    validateIncidentId(id);
+    if (!Number.isSafeInteger(before) || before < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error('Invalid activity page');
+    }
+    const { body } = await this.transport.request<ActivityPage>({
+      method: 'GET', path: ROOT + '/' + encodeURIComponent(id) + '/activity',
+      querystring: { before, limit },
+    });
+    if (!body || !Array.isArray(body.events) || body.events.length > limit ||
+        !Number.isSafeInteger(body.observed_revision) || typeof body.activity_pending !== 'boolean' ||
+        body.events.some(event => event.incident_id !== id || !Number.isSafeInteger(event.revision) ||
+          event.revision < 1 || event.revision > body.observed_revision ||
+          event.id !== id + ':' + event.revision)) throw new Error('Invalid incident activity response');
+    return body;
+  }
+
+  async findings(id: string, offset = 0, expectedRevision = 0, limit = 25): Promise<FindingPage> {
+    validateIncidentId(id);
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000 ||
+        !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || (offset > 0 && !expectedRevision) ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 25) throw new Error('Invalid finding page');
+    const { body } = await this.transport.request<FindingPage>({
+      method: 'GET', path: ROOT + '/' + encodeURIComponent(id) + '/findings',
+      querystring: { offset, expected_revision: expectedRevision, limit },
+    });
+    if (!body || !Array.isArray(body.findings) || !Number.isSafeInteger(body.revision) ||
+        (expectedRevision > 0 && body.revision !== expectedRevision) ||
+        !Number.isSafeInteger(body.unavailable_count) || body.unavailable_count < 0 ||
+        body.findings.length + body.unavailable_count > limit ||
+        (body.next_offset !== undefined && (!Number.isSafeInteger(body.next_offset) || body.next_offset !== offset + limit || body.next_offset > 1000)) ||
+        body.findings.some(ref => typeof ref.index !== 'string' || typeof ref.document_id !== 'string' ||
+          Object.keys(ref).some(key => key !== 'index' && key !== 'document_id'))) {
+      throw new Error('Invalid incident finding response');
+    }
+    return body;
   }
 
   async create(input: CreateIncident, requestId: string): Promise<IndexerIncidentResult> {

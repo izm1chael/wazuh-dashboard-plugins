@@ -80,6 +80,25 @@ export function registerIncidentRoutes(router: IRouter) {
     incident: await client(context).get(request.params.id),
   })));
 
+  router.get({
+    path: ROOT + '/{id}/activity',
+    validate: { params: schema.object({ id: idSchema }), query: schema.object({
+      before: schema.number({ min: 0, max: 2147483647, defaultValue: 0 }),
+      limit: schema.number({ min: 1, max: 100, defaultValue: 50 }),
+    }) },
+  }, async (context, request, response) => respond(response, () =>
+    client(context).activity(request.params.id, request.query.before, request.query.limit)));
+
+  router.get({
+    path: ROOT + '/{id}/findings',
+    validate: { params: schema.object({ id: idSchema }), query: schema.object({
+      offset: schema.number({ min: 0, max: 1000, defaultValue: 0 }),
+      expected_revision: schema.number({ min: 0, max: 2147483647, defaultValue: 0 }),
+      limit: schema.number({ min: 1, max: 25, defaultValue: 25 }),
+    }) },
+  }, async (context, request, response) => respond(response, () =>
+    client(context).findings(request.params.id, request.query.offset, request.query.expected_revision, request.query.limit)));
+
   router.post({
     path: ROOT,
     validate: { body: schema.object({

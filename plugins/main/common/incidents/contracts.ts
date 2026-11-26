@@ -60,3 +60,26 @@ export interface IndexerIncidentResult {
   activity_delivery: 'delivered' | 'pending';
   replayed: boolean;
 }
+
+export interface FindingReference { index: string; document_id: string }
+export interface FindingPage {
+  findings: FindingReference[];
+  revision: number;
+  unavailable_count: number;
+  next_offset?: number;
+}
+export interface IncidentActivity {
+  id: string;
+  incident_id: string;
+  revision: number;
+  kind: string;
+  actor: string;
+  at: string;
+  changes: Record<string, { before: string | number | boolean | null; after: string | number | boolean | null }>;
+}
+export interface ActivityPage {
+  events: IncidentActivity[];
+  observed_revision: number;
+  activity_pending: boolean;
+  next_before?: number;
+}
