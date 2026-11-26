@@ -187,7 +187,7 @@ export interface IncidentResponseRecord {
   execution_verified: false;
 }
 export interface IncidentResponsePage {
-  responses: IncidentResponseRecord[]; observed_revision: number; activity_pending: boolean; mode: 'manual_tracking_only';
+  responses: IncidentResponseRecord[]; observed_revision: number; activity_pending: boolean; mode: 'manual_tracking_only' | 'governed_response_tracking';
 }
 
 export interface IssuedResponseRecord extends FindingReference {
