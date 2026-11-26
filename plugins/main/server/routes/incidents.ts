@@ -1,3 +1,4 @@
+import { EVIDENCE_TYPES, RELATION_TYPES } from '../../common/incidents/contracts';
 import { IRouter, RequestHandlerContext, OpenSearchDashboardsResponseFactory } from 'opensearch_dashboards/server';
 import { schema } from '@osd/config-schema';
 import { TUNING_TYPES } from '../../common/incidents/tuning-proposal-validation';
@@ -233,6 +234,29 @@ export function registerIncidentRoutes(router: IRouter) {
   router.post({ path: ROOT + '/{id}/reopen', validate: { params, query, body: schema.object({ reason: reasonSchema }) } },
     async (context, request, response) => respond(response, () =>
       client(context).command(request.params.id, request.query.expected_revision, { kind: 'reopen', ...request.body })));
+
+  const registerReason = schema.string({ minLength: 1, maxLength: 1024 });
+  router.post({ path: ROOT + '/{id}/set-tags', validate: { params, query, body: schema.object({
+    tags: schema.arrayOf(schema.string({ minLength: 1, maxLength: 64 }), { maxSize: 25 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'set-tags', ...request.body })));
+  router.post({ path: ROOT + '/{id}/add-relation', validate: { params, query, body: schema.object({
+    target_id: idSchema, type: schema.oneOf(RELATION_TYPES.map(value => schema.literal(value))), reason: registerReason,
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'add-relation', ...request.body })));
+  router.post({ path: ROOT + '/{id}/remove-relation', validate: { params, query, body: schema.object({
+    relation_id: schema.string({ minLength: 1, maxLength: 64 }), reason: registerReason,
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'remove-relation', ...request.body })));
+  router.post({ path: ROOT + '/{id}/register-evidence', validate: { params, query, body: schema.object({
+    type: schema.oneOf(EVIDENCE_TYPES.map(value => schema.literal(value))), label: schema.string({ minLength: 1, maxLength: 256 }),
+    sha256: schema.string({ minLength: 64, maxLength: 64 }), custody_reference: schema.string({ minLength: 1, maxLength: 256 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'register-evidence', ...request.body })));
+  router.post({ path: ROOT + '/{id}/withdraw-evidence', validate: { params, query, body: schema.object({
+    evidence_id: schema.string({ minLength: 1, maxLength: 64 }), reason: registerReason,
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'withdraw-evidence', ...request.body })));
 
   router.post({ path: ROOT + '/{id}/add-note', validate: { params, query, body: schema.object({
     body: schema.string({ minLength: 1, maxLength: 8192 }),
