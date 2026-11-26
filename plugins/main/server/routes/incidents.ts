@@ -1,3 +1,4 @@
+import { HUNT_FIELDS } from '../../common/incidents/hunt-contract';
 import { EVIDENCE_TYPES, RELATION_TYPES } from '../../common/incidents/contracts';
 import { IRouter, RequestHandlerContext, OpenSearchDashboardsResponseFactory } from 'opensearch_dashboards/server';
 import { schema } from '@osd/config-schema';
@@ -56,7 +57,23 @@ async function respond<T extends object>(
 
 // Keep this potentially expensive fan-out separate from ordinary queue requests.
 let historyRunning = false;
+let huntRunning = false;
 export function registerIncidentRoutes(router: IRouter) {
+  router.post({
+    path: '/indexer/incident-hunt/search',
+    validate: { body: schema.object({
+      field: schema.oneOf(HUNT_FIELDS.map(value => schema.literal(value))),
+      values: schema.arrayOf(schema.string({ minLength: 1, maxLength: 256 }), { minSize: 1, maxSize: 20 }),
+      from: schema.string({ minLength: 20, maxLength: 30 }),
+      until: schema.string({ minLength: 20, maxLength: 30 }),
+    }) },
+  }, async (context, request, response) => respond(response, async () => {
+    if (huntRunning) throw { statusCode: 429 };
+    huntRunning = true;
+    try { return await client(context).hunt(request.body); }
+    finally { huntRunning = false; }
+  }));
+
   router.get({
     path: ROOT + '/{id}/rule-history',
     validate: { params: schema.object({ id: idSchema }), query: schema.object({
