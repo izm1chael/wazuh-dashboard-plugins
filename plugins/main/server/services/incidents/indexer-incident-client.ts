@@ -1,4 +1,4 @@
-import type { CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import type { FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 import { validateIncidentId } from './incident-id';
 
@@ -142,6 +142,13 @@ export class IndexerIncidentClient {
           Object.keys(ref).some(key => key !== 'index' && key !== 'document_id'))) {
       throw new Error('Invalid incident finding response');
     }
+    if (body.observations !== undefined) {
+      if (!Array.isArray(body.observations) || body.observations.length !== body.findings.length ||
+          body.observations.some((observation, index) => !validObservation(observation) ||
+            observation.index !== body.findings[index].index || observation.document_id !== body.findings[index].document_id)) {
+        throw new Error('Invalid finding intelligence projection');
+      }
+    }
     return body;
   }
 
@@ -202,4 +209,16 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
       Object.prototype.hasOwnProperty.call(incident, 'create_request_hash')) {
     throw new Error('Invalid incident projection; reload before retrying');
   }
+}
+
+function validObservation(value: FindingObservation): boolean {
+  const nullableText = (text: unknown) => text === null || (typeof text === 'string' && text.length <= 1024);
+  return !!value && Object.keys(value).every(key => ['index', 'document_id', 'timestamp', 'rule_id', 'rule_title', 'entities', 'techniques', 'tactics'].includes(key)) &&
+    nullableText(value.timestamp) && nullableText(value.rule_id) && nullableText(value.rule_title) &&
+    Array.isArray(value.entities) && value.entities.length <= 240 &&
+    value.entities.every(entity => !!entity && Object.keys(entity).every(key => ['kind', 'value', 'field'].includes(key)) &&
+      typeof entity.kind === 'string' && entity.kind.length <= 64 && typeof entity.field === 'string' && entity.field.length <= 128 &&
+      typeof entity.value === 'string' && entity.value.length <= 1024) &&
+    Array.isArray(value.techniques) && value.techniques.length <= 96 && value.techniques.every(id => typeof id === 'string' && /^T[0-9]{4}(\.[0-9]{3})?$/.test(id)) &&
+    Array.isArray(value.tactics) && value.tactics.length <= 48 && value.tactics.every(id => typeof id === 'string' && /^TA[0-9]{4}$/.test(id));
 }

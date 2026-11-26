@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { EuiBasicTable, EuiBasicTableColumn, EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFlexGroup, EuiFlexItem, EuiFormRow, EuiSpacer, EuiText, EuiTitle } from '@elastic/eui';
 import type { FindingPage, FindingReference, IncidentSummary, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
+import { FindingIntelligencePanel } from './finding-intelligence-panel';
 
 export function IncidentFindingsPanel({ api, incident, disabled, command }: {
   api: IncidentApi; incident: IncidentSummary; disabled: boolean; command: (value: IndexerIncidentCommand) => Promise<void>;
@@ -41,6 +42,8 @@ export function IncidentFindingsPanel({ api, incident, disabled, command }: {
       <EuiFlexItem grow={false}><EuiButtonEmpty disabled={loading || offsets.length === 1} onClick={() => setOffsets(items => items.slice(0, -1))}>Previous findings</EuiButtonEmpty></EuiFlexItem>
       <EuiFlexItem grow={false}><EuiButtonEmpty disabled={loading || page?.next_offset === undefined} onClick={() => { const next = page?.next_offset; if (next !== undefined) setOffsets(items => [...items, next]); }}>Next findings</EuiButtonEmpty></EuiFlexItem>
     </EuiFlexGroup>
+    <EuiSpacer size='m' />
+    {page?.observations !== undefined && <FindingIntelligencePanel observations={page.observations} />}
     <EuiSpacer size='s' />
     <form onSubmit={event => {
       event.preventDefault();

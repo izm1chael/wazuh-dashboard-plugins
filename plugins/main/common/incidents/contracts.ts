@@ -65,7 +65,13 @@ export interface IndexerIncidentResult {
 }
 
 export interface FindingReference { index: string; document_id: string }
+export interface FindingEntity { kind: string; value: string; field: string }
+export interface FindingObservation extends FindingReference {
+  timestamp: string | null; rule_id: string | null; rule_title: string | null;
+  entities: FindingEntity[]; techniques: string[]; tactics: string[];
+}
 export interface FindingPage {
+  observations?: FindingObservation[];
   findings: FindingReference[];
   revision: number;
   unavailable_count: number;

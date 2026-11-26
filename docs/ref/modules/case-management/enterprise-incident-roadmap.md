@@ -50,3 +50,7 @@ The workspace now displays paginated delivered audit activity and a separately p
 ## Collaboration implementation
 
 Dedicated read projection and collaborate action now support append-only attributed analyst notes and owner-managed task checklists. Notes are delivered through the existing audit outbox, without a 20-note lifetime cap; tasks have a 100-item aggregate limit and full transition history. The UI shows task completion counts, notes, pagination, and pending-delivery/stale revision states. All commands remain revision-checked; closed incidents must reopen before collaboration writes. Task assignee management, reusable templates, note redaction/amendment governance and qualification remain outstanding. Notes and tasks are single-SOC content, not automatically copied finding evidence.
+
+## Live finding intelligence
+
+The existing revision-bound, caller-filtered finding page now carries optional allowlisted observations (source time, rule ID/title, host/agent/user/network/domain/hash fields and MITRE ATT&CK IDs). The workspace groups entity values, deduplicates technique/tactic IDs and sorts the visible page chronologically. This is a live per-page projection, not a complete incident-wide timeline, persistent entity graph or retained evidence. Unknown data stays unknown; source security and retention still apply. No raw event or hidden finding is copied to case storage.
