@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiDescriptionList, EuiFlexGroup, EuiFlexItem, EuiFormRow, EuiSelect, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import type { Classification, IncidentSummary, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
+import { IncidentAutomationHistoryPanel } from './incident-automation-history-panel';
 import { IncidentActivityPanel } from './incident-activity-panel';
 import { IncidentFindingsPanel } from './incident-findings-panel';
 import { IncidentCollaborationPanel } from './incident-collaboration-panel';
@@ -131,6 +132,8 @@ export function IncidentDetail({ api, id, back, openRelated }: { api: IncidentAp
       <IncidentResponsePanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed'} command={command} />
       <EuiSpacer size='l' />
       <IssuedResponsesPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} />
+      <EuiSpacer size='l' />
+      {!loading && !mustReload && <IncidentAutomationHistoryPanel key={id + ':' + incident.revision + ':' + refresh} id={id} revision={incident.revision} disabled={disabled} />}
       <EuiSpacer size='l' />
       <IncidentActivityPanel key={id + ':' + incident.revision + ':' + refresh} api={api} id={id} />
     </>}
