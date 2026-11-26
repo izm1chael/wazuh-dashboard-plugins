@@ -54,3 +54,7 @@ Dedicated read projection and collaborate action now support append-only attribu
 ## Live finding intelligence
 
 The existing revision-bound, caller-filtered finding page now carries optional allowlisted observations (source time, rule ID/title, host/agent/user/network/domain/hash fields and MITRE ATT&CK IDs). The workspace groups entity values, deduplicates technique/tactic IDs and sorts the visible page chronologically. This is a live per-page projection, not a complete incident-wide timeline, persistent entity graph or retained evidence. Unknown data stays unknown; source security and retention still apply. No raw event or hidden finding is copied to case storage.
+
+## Correlation dry-run workflow
+
+The workspace now links to a read-only preview form, with a dedicated current-user indexer API and permission. The rule UUID list, version, threshold and full UTC time windows are validated; no arbitrary query DSL or index names accepted. Search rejects incomplete results or over 1,000 matching findings rather than silently truncating. The preview shows candidate group identities, references and exclusion counters; no configuration is persisted and no cases are written. Search visibility and ingestion completeness remain separate concepts. Verify actual DLS/FLS, source mapping, result caps and repeatability before enabling automatic execution.

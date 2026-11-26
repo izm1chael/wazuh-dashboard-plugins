@@ -103,3 +103,17 @@ export interface IncidentTask {
 export interface CollaborationPage {
   notes: IncidentNote[]; tasks: IncidentTask[]; observed_revision: number; activity_pending: boolean; next_before?: number;
 }
+
+export interface CorrelationPreviewInput {
+  policy_id: string; policy_version: number; rules: string[];
+  window_minutes: number; minimum_findings: number; from: string; until: string;
+}
+export interface CorrelationGroup {
+  key: string; window_start: string; window_end: string; findings: FindingReference[];
+}
+export interface CorrelationPreview {
+  mode: 'preview'; scope: 'caller_visible_search_snapshot';
+  policy_id: string; policy_version: number; from: string; until: string;
+  groups: CorrelationGroup[]; distinct_candidates: number; duplicate_inputs: number;
+  insufficient_identity: number; excluded_rule: number; outside_range: number; below_threshold: number;
+}

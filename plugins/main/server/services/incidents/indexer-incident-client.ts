@@ -1,5 +1,6 @@
-import type { FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import type { CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import { validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
 import { validateIncidentId } from './incident-id';
 
 /** Production routes must bind this transport to asCurrentUser, never an internal
@@ -85,6 +86,44 @@ export class IndexerIncidentClient {
     if (!body) throw new Error('Invalid incident detail');
     validateSummary(body.incident, id);
     return body.incident;
+  }
+
+  async correlationPreview(input: CorrelationPreviewInput): Promise<CorrelationPreview> {
+    validateCorrelationPreview(input);
+    const { body } = await this.transport.request<CorrelationPreview>({
+      method: 'POST', path: '/_plugins/_setup/incident-correlation/preview',
+      body: { policy_id: input.policy_id, policy_version: input.policy_version, rules: input.rules,
+        window_minutes: input.window_minutes, minimum_findings: input.minimum_findings, from: input.from, until: input.until },
+    });
+    const countFields = ['distinct_candidates', 'duplicate_inputs', 'insufficient_identity', 'excluded_rule', 'outside_range', 'below_threshold'] as const;
+    if (!body || body.mode !== 'preview' || body.scope !== 'caller_visible_search_snapshot' ||
+        body.policy_id !== input.policy_id || body.policy_version !== input.policy_version ||
+        Date.parse(body.from) !== Date.parse(input.from) || Date.parse(body.until) !== Date.parse(input.until) ||
+        !Array.isArray(body.groups) || body.groups.length > 500 ||
+        countFields.some(key => !Number.isSafeInteger(body[key]) || body[key] < 0 || body[key] > 1000)) {
+      throw new Error('Invalid correlation preview response');
+    }
+    const refs = new Set<string>(), keys = new Set<string>();
+    for (const group of body.groups) {
+      const start = Date.parse(group.window_start), end = Date.parse(group.window_end);
+      if (!/^[a-f0-9]{64}$/.test(group.key) || keys.has(group.key) ||
+          !Number.isFinite(start) || !Number.isFinite(end) || start < Date.parse(input.from) ||
+          end > Date.parse(input.until) || end - start !== input.window_minutes * 60000 ||
+          start % (input.window_minutes * 60000) !== 0 ||
+          !Array.isArray(group.findings) || group.findings.length < input.minimum_findings ||
+          group.findings.length > 1000) throw new Error('Invalid correlation group');
+      keys.add(group.key);
+      for (const ref of group.findings) {
+        if (!ref || typeof ref.index !== 'string' || typeof ref.document_id !== 'string' ||
+            Object.keys(ref).some(key => key !== 'index' && key !== 'document_id')) throw new Error('Invalid finding reference');
+        const key = JSON.stringify([ref.index, ref.document_id]);
+        if (refs.has(key)) throw new Error('Duplicate correlation finding');
+        refs.add(key);
+      }
+    }
+    if (refs.size + body.insufficient_identity + body.excluded_rule + body.outside_range + body.below_threshold !== body.distinct_candidates ||
+        body.distinct_candidates + body.duplicate_inputs > 1000) throw new Error('Correlation counts do not reconcile');
+    return body;
   }
 
   async collaboration(id: string, before = 0, limit = 50): Promise<CollaborationPage> {
