@@ -14,7 +14,7 @@ import { IncidentHandoverPanel } from './incident-handover-panel';
 import { IncidentInvestigationPanel } from './incident-investigation-panel';
 import { IncidentMetadataEditor } from './incident-metadata-editor';
 
-export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string; back: () => void }) {
+export function IncidentDetail({ api, id, back, openRelated }: { api: IncidentApi; id: string; back: () => void; openRelated?: (id: string) => void }) {
   const [incident, setIncident] = useState<IncidentSummary>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -126,7 +126,7 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
       <EuiSpacer size='l' />
       <IncidentAiPanel key={id + ':' + incident.revision + ':' + refresh} incident={incident} disabled={disabled || pending} command={command} />
       <EuiSpacer size='l' />
-      <IncidentCollaborationPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed'} command={command} />
+      <IncidentCollaborationPanel key={id + ':' + incident.revision + ':' + refresh} openRelated={openRelated} api={api} incident={incident} disabled={disabled || incident.status === 'closed'} command={command} />
       <EuiSpacer size='l' />
       <IncidentResponsePanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed'} command={command} />
       <EuiSpacer size='l' />
