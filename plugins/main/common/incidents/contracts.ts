@@ -4,7 +4,7 @@ export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 export type Tlp = 'TLP:CLEAR' | 'TLP:GREEN' | 'TLP:AMBER' | 'TLP:AMBER+STRICT' | 'TLP:RED';
 export type Classification = 'true_positive' | 'benign_positive' | 'false_positive' | 'undetermined' | 'duplicate';
 export type Status = 'new' | 'triaging' | 'active' | 'closed';
-export type Queue = 'open' | 'new' | 'triaging' | 'active' | 'closed' | 'unassigned' | 'all';
+export type Queue = 'open' | 'mine' | 'handover' | 'new' | 'triaging' | 'active' | 'closed' | 'unassigned' | 'all';
 
 export interface CreateIncident {
   title: string;
