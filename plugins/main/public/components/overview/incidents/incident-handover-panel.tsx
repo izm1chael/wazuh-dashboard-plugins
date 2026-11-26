@@ -11,7 +11,7 @@ export function IncidentHandoverPanel({ incident, disabled, command }: {
   const offer = incident.handover;
   return <>
     <EuiTitle size='s'><h2>Analyst handover</h2></EuiTitle>
-    <EuiText size='s'>The current owner retains responsibility until the exact authenticated recipient accepts. The assignment grant and participant checks are enforced by the indexer. Usernames are not directory-verified when offered.</EuiText>
+    <EuiText size='s'>The current owner retains responsibility until the exact authenticated recipient accepts. The assignment grant and participant checks are enforced by the indexer. Usernames are not directory-verified when offered. Reasons are recorded in internal audit; use an investigation note for shared handover context.</EuiText>
     {offer ? <EuiCallOut title={'Pending handover to ' + offer.target}>
       Offered by {offer.offered_by} at {offer.offered_at}. Accept as the named recipient, or cancel as either participant.
     </EuiCallOut> : <EuiFormRow label='Recipient exact username'>
