@@ -29,7 +29,7 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
     setLoading(true);
     setError('');
     api.get(id).then(record => {
-      if (current) { setIncident(record); setMustReload(false); }
+      if (current) { setIncident(record); setPending(false); setMustReload(false); }
     }, () => {
       if (current) { setIncident(undefined); setPending(false); setError('Incident unavailable or access denied.'); setMustReload(true); }
     }).finally(() => { if (current) setLoading(false); });
