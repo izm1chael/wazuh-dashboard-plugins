@@ -35,7 +35,8 @@ export function IncidentIndicatorPanel({ back }: { back: () => void }) {
   const [exported, setExported] = useState('');
   const [selected, setSelected] = useState('');
   const [reason, setReason] = useState('');
-  const [hunt, setHunt] = useState<{ id: string; field: HuntField; value: string; from: string; until: string }>();
+  const [hunt, setHunt] = useState<{ id: string; field: HuntField; value?: string; values?: string[]; from: string; until: string }>();
+  const [batchType, setBatchType] = useState<IndicatorType>('ipv4');
   const generation = useRef(0);
   const running = useRef(false);
   useEffect(() => {
@@ -105,6 +106,33 @@ export function IncidentIndicatorPanel({ back }: { back: () => void }) {
       setSelected(row.id); setReason(''); setHunt(undefined); setExported('');
     }}>Inspect indicator</EuiButtonEmpty> },
   ];
+  const batchRows = rows.filter(row => row.type === batchType && row.state === 'active');
+  function prepareBatch(field: HuntField) {
+    if (!batchRows.length || batchRows.length > 20) return;
+    const until = Math.min(Date.now(), ...batchRows.map(row => Date.parse(row.valid_until)));
+    const from = Math.max(until - DAY, ...batchRows.map(row => Date.parse(row.valid_from)));
+    if (from >= until) { setError('No common elapsed validity window for the selected indicators.'); return; }
+    setSelected(''); setExported('');
+    setHunt({ id: 'batch', field, values: batchRows.map(row => row.value), from: new Date(from).toISOString(), until: new Date(until).toISOString() });
+  }
+  async function prepareExport(row: Indicator) {
+    if (!catalog || running.current) return;
+    const expected = catalog.revision, run = ++generation.current;
+    running.current = true; setBusy(true); setExported(''); setError('');
+    try {
+      const fresh = await fetchCatalog();
+      if (run !== generation.current) return;
+      setCatalog(fresh);
+      const current = fresh.indicators.find(item => item.id === row.id);
+      if (fresh.revision !== expected || !current) { clearDerived(); throw new Error('Catalog changed'); }
+      setExported(JSON.stringify(exportStix([current], bundleUuid(), new Date().toISOString()), null, 2));
+    } catch (_) {
+      if (run === generation.current) setError('Export unavailable, changed or no longer eligible. Reload before retrying.');
+    } finally {
+      running.current = false;
+      if (run === generation.current) setBusy(false);
+    }
+  }
   function prepare(row: Indicator, field: HuntField) {
     const until = Math.min(Date.now(), Date.parse(row.valid_until), row.revoked_at ? Date.parse(row.revoked_at) : Infinity);
     const from = Math.max(Date.parse(row.valid_from), until - DAY);
@@ -133,18 +161,25 @@ export function IncidentIndicatorPanel({ back }: { back: () => void }) {
         {chosen.revoked_at && <EuiText size='s'>Revoked by {chosen.revoked_by} at {chosen.revoked_at} (revision {chosen.revoked_revision}): {chosen.revocation_reason}</EuiText>}
         <EuiText size='s'>Prepare a historical search of an elapsed portion of this indicator's validity window. The hunt is manual and exact; no historical finding is automatically classified as malicious.</EuiText>
         {huntFields(chosen.type).map(field => <EuiButtonEmpty key={field} disabled={locked} onClick={() => prepare(chosen, field)}>Prepare hunt: {field}</EuiButtonEmpty>)}
-        {hunt && <><EuiButtonEmpty onClick={() => setHunt(undefined)}>Close indicator hunt</EuiButtonEmpty>
-          <IncidentHuntPanel key={JSON.stringify(hunt)} initial={hunt} disabled={locked} /></>}
-        {chosen.state === 'active' && chosen.tlp === 'TLP:CLEAR' && <EuiButtonEmpty disabled={locked} onClick={() => {
-          try { setExported(JSON.stringify(exportStix([chosen], bundleUuid(), new Date().toISOString()), null, 2)); }
-          catch (_) { setError('Export no longer eligible or secure random generation unavailable.'); }
-        }}>Prepare local STIX export (CLEAR only)</EuiButtonEmpty>}
+        {chosen.state === 'active' && chosen.tlp === 'TLP:CLEAR' && <EuiButtonEmpty disabled={locked} onClick={() => void prepareExport(chosen)}>Prepare local STIX export (CLEAR only)</EuiButtonEmpty>}
         {exported && <><EuiFormRow label='Local STIX bundle' helpText='Unmarked STIX subset, no original provenance or source metadata. Review before any external sharing.'>
           <EuiTextArea value={exported} readOnly rows={10} /></EuiFormRow><EuiButtonEmpty onClick={() => setExported('')}>Clear export</EuiButtonEmpty></>}
         {chosen.state !== 'revoked' && <>
           <EuiFormRow label='Revocation reason'><EuiFieldText value={reason} maxLength={1024} disabled={locked} onChange={e => setReason(e.target.value)} /></EuiFormRow>
           <EuiButton color='danger' disabled={locked || !reason.trim()} onClick={() => void mutate('revoke', { id: chosen.id, reason: reason.trim() }, 1)}>Revoke indicator permanently</EuiButton>
         </>}
+      </>}
+      <EuiSpacer size='l' />
+      <EuiTitle size='s'><h2>Active indicator matching</h2></EuiTitle>
+      <EuiFormRow label='Type to match in filtered catalog'><EuiSelect value={batchType} disabled={locked} options={INDICATOR_TYPES.map(v => ({ value: v, text: v }))}
+        onChange={e => { setBatchType(e.target.value as IndicatorType); setHunt(undefined); }} /></EuiFormRow>
+      <EuiText size='s'>{batchRows.length} active indicators in this filtered view. Narrow filters to 1–20 indicators. The prepared hunt uses their common elapsed validity window (up to 24 hours).</EuiText>
+      {huntFields(batchType).map(field => <EuiButtonEmpty key={field} disabled={locked || !batchRows.length || batchRows.length > 20}
+        onClick={() => prepareBatch(field)}>Prepare batch hunt: {field}</EuiButtonEmpty>)}
+      {hunt && <>
+        <EuiText size='s'>Prepared indicator values and dates can be edited; results are exact telemetry matches, not persistent or verified CTI sightings.</EuiText>
+        <EuiButtonEmpty onClick={() => setHunt(undefined)}>Close indicator hunt</EuiButtonEmpty>
+        <IncidentHuntPanel key={JSON.stringify(hunt)} initial={hunt} disabled={locked} />
       </>}
       <EuiSpacer size='l' />
       <EuiTitle size='s'><h2>Add or renew indicator</h2></EuiTitle>
