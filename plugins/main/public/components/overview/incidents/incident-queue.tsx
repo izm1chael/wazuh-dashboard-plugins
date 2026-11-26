@@ -6,9 +6,9 @@ import {
 import type { IncidentSummary, Queue, QueueCursor, QueuePage, QueueQuery, Severity } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
 
-const QUEUES: Queue[] = ['open', 'new', 'triaging', 'active', 'unassigned', 'closed', 'all'];
+const QUEUES: Queue[] = ['open', 'mine', 'handover', 'new', 'triaging', 'active', 'unassigned', 'closed', 'all'];
 const SEVERITIES: Severity[] = ['informational', 'low', 'medium', 'high', 'critical'];
-const label = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+const label = (value: string) => value === 'mine' ? 'My open incidents' : value === 'handover' ? 'Incoming handovers' : value.charAt(0).toUpperCase() + value.slice(1);
 
 export function IncidentQueue({ api, open, create }: {
   api: IncidentApi;
@@ -55,6 +55,7 @@ export function IncidentQueue({ api, open, create }: {
     { field: 'severity', name: 'Severity' },
     { field: 'status', name: 'Status' },
     { field: 'owner', name: 'Owner', render: (value: string | null) => value || 'Unassigned' },
+    { name: 'Handover', render: (item: IncidentSummary) => item.handover?.target || '—' },
     { field: 'finding_count', name: 'Findings' },
     { field: 'updated_at', name: 'Updated (UTC)' },
   ];
