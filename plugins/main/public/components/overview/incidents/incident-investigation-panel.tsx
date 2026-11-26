@@ -7,8 +7,8 @@ import type { IncidentApi } from './incident-api';
 import { loadInvestigation, InvestigationSnapshot, TimelineRow } from './investigation-snapshot';
 import { summarizeFindings } from './finding-intelligence-model';
 
-export function IncidentInvestigationPanel({ api, incident, disabled, attach }: {
-  api: IncidentApi; incident: IncidentSummary; disabled: boolean; attach?: (command: IndexerIncidentCommand) => Promise<void>;
+export function IncidentInvestigationPanel({ api, incident, disabled, attach, openRelated }: {
+  api: IncidentApi; incident: IncidentSummary; disabled: boolean; attach?: (command: IndexerIncidentCommand) => Promise<void>; openRelated?: (id: string) => void;
 }) {
   const [snapshot, setSnapshot] = useState<InvestigationSnapshot>();
   const [loading, setLoading] = useState(false);
@@ -79,7 +79,7 @@ export function IncidentInvestigationPanel({ api, incident, disabled, attach }: 
         onClick={() => setHunt({ field, value: selectedEntity.value })}>Prepare hunt: {field}</EuiButtonEmpty>)}
       {hunt && <>
         <EuiButtonEmpty onClick={() => setHunt(undefined)}>Close hunt</EuiButtonEmpty>
-        <IncidentHuntPanel key={JSON.stringify(hunt)} initial={hunt} disabled={disabled}
+        <IncidentHuntPanel key={JSON.stringify(hunt)} initial={hunt} disabled={disabled} openRelated={openRelated}
           attach={incident.owner && incident.status !== 'closed' ? attach : undefined} />
       </>}
       <EuiFormRow label='Timeline source'><EuiSelect value={filter} disabled={!!entity} onChange={e => setFilter(e.target.value)}
