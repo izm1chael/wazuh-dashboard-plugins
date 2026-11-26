@@ -209,6 +209,15 @@ export function registerIncidentRoutes(router: IRouter) {
         client(context).command(request.params.id, request.query.expected_revision, { kind })));
   }
 
+  router.post({ path: ROOT + '/{id}/offer-handover', validate: { params, query, body: schema.object({
+    target: schema.string({ minLength: 1, maxLength: 1024 }), reason: reasonSchema,
+  }) } }, (context, request, response) => handle(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'offer-handover', ...request.body })));
+  for (const kind of ['accept-handover', 'cancel-handover'] as const) {
+    router.post({ path: ROOT + '/{id}/' + kind, validate: { params, query, body: schema.object({ reason: reasonSchema }) } },
+      (context, request, response) => handle(response, () =>
+        client(context).command(request.params.id, request.query.expected_revision, { kind, ...request.body })));
+  }
   router.post({ path: ROOT + '/{id}/edit', validate: { params, query, body: schema.object({
     title: schema.maybe(schema.string({ minLength: 1, maxLength: 1024 })),
     description: schema.maybe(schema.string({ maxLength: 32768 })),
