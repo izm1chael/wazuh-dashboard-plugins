@@ -4,7 +4,7 @@ const ID = '00000000-0000-4000-8000-000000000001';
 
 function setup(revision = 1) {
   const request = jest.fn().mockResolvedValue({
-    body: { incident: { id: ID, revision, finding_count: 0 }, activity_delivery: 'delivered' },
+    body: { incident: { id: ID, revision, finding_count: 0 }, activity_delivery: 'delivered', replayed: false },
   });
   return { request, client: new IndexerIncidentClient({ request } as CurrentUserIncidentTransport) };
 }
@@ -35,11 +35,23 @@ describe('dedicated indexer incident adapter', () => {
   test('create sends only the allowed fields to the fixed API', async () => {
     const { client, request } = setup();
     const input = { title: 'Example', severity: 'high' as const, created_by: 'forged', owner: 'forged' };
-    await client.create(input);
+    await client.create(input, ID);
     expect(request).toHaveBeenCalledWith({
       method: 'POST', path: '/_plugins/_setup/incidents',
-      body: { title: 'Example', severity: 'high' },
+      body: { request_id: ID, title: 'Example', severity: 'high' },
     });
+  });
+
+  test('same create key is retained and a replay can return the current revision', async () => {
+    const { client, request } = setup();
+    request.mockResolvedValueOnce({ body: { incident: { id: ID, revision: 3, finding_count: 0 }, activity_delivery: 'pending', replayed: true } });
+    const input = { title: 'Example', severity: 'high' as const };
+    const result = await client.create(input, ID);
+    expect(result.replayed).toBe(true);
+    expect(result.incident.revision).toBe(3);
+    expect(request.mock.calls[0][0].body.request_id).toBe(ID);
+    await expect(client.create(input, 'invalid')).rejects.toThrow();
+    expect(request).toHaveBeenCalledTimes(1);
   });
 
   test('commands carry the expected revision and fixed command path', async () => {
@@ -68,10 +80,10 @@ describe('dedicated indexer incident adapter', () => {
   test('rejects mismatched revision or internal fields and never retries failures', async () => {
     const { client, request } = setup();
     await expect(client.command(ID, 1, { kind: 'assign-self' })).rejects.toThrow(/projection/);
-    request.mockResolvedValueOnce({ body: { incident: { id: ID, revision: 2, finding_count: 0, pending_activity: {} }, activity_delivery: 'delivered' } });
+    request.mockResolvedValueOnce({ body: { incident: { id: ID, revision: 2, finding_count: 0, pending_activity: {} }, activity_delivery: 'delivered', replayed: false } });
     await expect(client.command(ID, 1, { kind: 'assign-self' })).rejects.toThrow(/projection/);
     request.mockRejectedValueOnce(new Error('network unavailable'));
-    await expect(client.create({ title: 'Example', severity: 'high' })).rejects.toThrow('network unavailable');
+    await expect(client.create({ title: 'Example', severity: 'high' }, ID)).rejects.toThrow('network unavailable');
     expect(request).toHaveBeenCalledTimes(3);
   });
 });

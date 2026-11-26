@@ -30,6 +30,7 @@ import { ILegacyClusterClient } from '../../../src/core/server';
 
 import { WazuhPluginSetup, WazuhPluginStart, PluginSetup } from './types';
 import { setupRoutes } from './routes';
+import { registerIncidentRoutes } from './routes/incidents';
 import { resolveCookieSecure } from './lib/cookie';
 import { jobInitializeRun, jobQueueRun } from './start';
 import { first } from 'rxjs/operators';
@@ -733,6 +734,7 @@ export class WazuhPlugin implements Plugin<WazuhPluginSetup, WazuhPluginStart> {
     const config$ =
       this.initializerContext.config.create<WazuhPluginConfigType>();
     const config = await config$.pipe(first()).toPromise();
+    if (config.experimentalIncidentsEnabled) registerIncidentRoutes(router);
 
     core.capabilities.registerProvider(() => ({
       wazuh: {

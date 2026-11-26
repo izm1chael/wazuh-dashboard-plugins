@@ -35,6 +35,7 @@ export interface QueuePage { incidents: IncidentSummary[]; next?: QueueCursor }
 export interface IndexerIncidentResult {
   incident: IncidentSummary;
   activity_delivery: 'delivered' | 'pending';
+  replayed: boolean;
 }
 
 const ROOT = '/_plugins/_setup/incidents';
@@ -104,10 +105,12 @@ export class IndexerIncidentClient {
     return body.incident;
   }
 
-  async create(input: CreateIncident): Promise<IndexerIncidentResult> {
+  async create(input: CreateIncident, requestId: string): Promise<IndexerIncidentResult> {
+    validateIncidentId(requestId);
     const { body } = await this.transport.request<IndexerIncidentResult>({
       method: 'POST', path: ROOT,
       body: {
+        request_id: requestId,
         title: input.title,
         severity: input.severity,
         ...(input.description === undefined ? {} : { description: input.description }),
@@ -115,7 +118,9 @@ export class IndexerIncidentClient {
         ...(input.tlp === undefined ? {} : { tlp: input.tlp }),
       },
     });
-    return validateResult(body);
+    const result = validateResult(body);
+    if (!result.replayed && result.incident.revision !== 1) throw new Error('Invalid new incident revision');
+    return result;
   }
 
   async command(id: string, revision: number, command: IndexerIncidentCommand): Promise<IndexerIncidentResult> {
@@ -133,7 +138,7 @@ export class IndexerIncidentClient {
 }
 
 function validateResult(body: IndexerIncidentResult, id?: string, revision?: number): IndexerIncidentResult {
-  if (!body || !body.incident || !['pending', 'delivered'].includes(body.activity_delivery)) {
+  if (!body || !body.incident || !['pending', 'delivered'].includes(body.activity_delivery) || typeof body.replayed !== 'boolean') {
     throw new Error('Invalid incident mutation response; reload before retrying');
   }
   validateSummary(body.incident, id, revision);
@@ -153,7 +158,8 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
       (id !== undefined && incident.id !== id) ||
       !Number.isSafeInteger(incident.finding_count) || incident.finding_count < 0 ||
       Object.prototype.hasOwnProperty.call(incident, 'pending_activity') ||
-      Object.prototype.hasOwnProperty.call(incident, 'findings')) {
+      Object.prototype.hasOwnProperty.call(incident, 'findings') ||
+      Object.prototype.hasOwnProperty.call(incident, 'create_request_hash')) {
     throw new Error('Invalid incident projection; reload before retrying');
   }
 }
