@@ -1,4 +1,4 @@
-import { HuntInput, HuntField, HuntReport, validateHunt, validateHuntReport } from './hunt-contract';
+import { HuntInput, HuntReport, validateHunt, validateHuntReport } from './hunt-contract';
 
 export const BEHAVIOUR_FIELDS = ['wazuh.agent.id','host.id','host.name','host.hostname','host.ip','source.ip','destination.ip','user.name','user.id'] as const;
 export type BehaviourField = typeof BEHAVIOUR_FIELDS[number];
