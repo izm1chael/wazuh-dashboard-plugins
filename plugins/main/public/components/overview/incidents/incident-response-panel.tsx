@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSelect, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import type { IncidentResponsePage, IncidentResponseRecord, IncidentSummary, IndexerIncidentCommand, ManualResponseOutcome, ResponseIntent } from '../../../../common/incidents/contracts';
-import { RESPONSE_INTENTS, RESPONSE_OUTCOMES } from '../../../../common/incidents/response-validation';
+import { RESPONSE_INTENTS, RESPONSE_OUTCOMES, validScanScope } from '../../../../common/incidents/response-validation';
 import type { IncidentApi } from './incident-api';
 
 const label = (value: string) => value.replace(/_/g, ' ');
@@ -14,6 +14,9 @@ function ResponseRow({ row, disabled, owner, command }: {
   const [outcome, setOutcome] = useState<ManualResponseOutcome>('not_performed');
   const pending = row.state === 'requested';
   const approved = row.state === 'approved';
+  const scan = row.type === 'scan_vulnerability';
+  const dispatched = scan && ['dispatch_reserved', 'manager_accepted', 'dispatch_unknown'].includes(row.state);
+  const canReconcile = row.state !== 'dispatch_reserved' || (!!row.finalized_at && Date.now() - Date.parse(row.finalized_at) >= 900000);
   const submit = (kind: Decision) => {
     if (disabled || !reason.trim()) return;
     const common = { response_id: row.id, reason };
@@ -28,17 +31,18 @@ function ResponseRow({ row, disabled, owner, command }: {
       {row.decided_by && <p>Decision by {row.decided_by} · {row.decided_at} · {row.decision_reason}</p>}
       {row.finalized_by && <p>Finalized by {row.finalized_by} · {row.finalized_at} · {row.final_reason}</p>}
     </EuiText>
-    {!disabled && (pending || approved) && <>
+    {!disabled && (pending || approved || dispatched) && <>
       <EuiFormRow label={'Decision or outcome reason for ' + row.id}><EuiTextArea value={reason} maxLength={2048} onChange={event => setReason(event.target.value)} /></EuiFormRow>
       {pending && <>
         <EuiButtonEmpty disabled={!reason.trim()} onClick={() => submit('approve-response')}>Approve request</EuiButtonEmpty>
         <EuiButtonEmpty disabled={!reason.trim()} onClick={() => submit('reject-response')}>Reject request</EuiButtonEmpty>
       </>}
-      {approved && <>
+      {scan && (approved || dispatched) && <EuiCallOut color='warning' title='Governed scan'>An approved request may be dispatched only by the separately configured runner. Manager acknowledgement is not endpoint completion. For ambiguous or reserved dispatch, stop the runner and investigate before recording an independent manual outcome. Do not retry automatically.</EuiCallOut>}
+      {(approved || dispatched) && canReconcile && <>
         <EuiFormRow label='Manual outcome'><EuiSelect value={outcome} options={RESPONSE_OUTCOMES.map(value => ({ value, text: label(value) }))} onChange={e => setOutcome(e.target.value as ManualResponseOutcome)} /></EuiFormRow>
         <EuiButtonEmpty disabled={!reason.trim()} onClick={() => submit('record-response-outcome')}>Record unverified outcome</EuiButtonEmpty>
       </>}
-      {owner && <EuiButtonEmpty disabled={!reason.trim()} onClick={() => submit('cancel-response')}>Cancel request</EuiButtonEmpty>}
+      {owner && (pending || approved) && <EuiButtonEmpty disabled={!reason.trim()} onClick={() => submit('cancel-response')}>Cancel request</EuiButtonEmpty>}
     </>}
   </EuiPanel>;
 }
@@ -67,7 +71,7 @@ export function IncidentResponsePanel({ api, incident, disabled, command }: {
   return <>
     <EuiTitle size='s'><h2>Response governance</h2></EuiTitle>
     <EuiSpacer size='s' />
-    <EuiCallOut title='Manual tracking only'>Approval does not dispatch a response. Reported outcomes are not verified endpoint execution. Permissions and independent reviewer checks are enforced by the indexer.</EuiCallOut>
+    <EuiCallOut title='Response governance'>Manual intents remain tracking-only. An exact single-agent vulnerability scan may be dispatched by a separately approved service account when SOAR is enabled. Approval alone does not dispatch. Reported outcomes are not verified endpoint execution.</EuiCallOut>
     <EuiButtonEmpty disabled={loading || disabled} onClick={() => setRefresh(value => value + 1)}>Refresh response records</EuiButtonEmpty>
     {error && <EuiText size='s'>Response records unavailable or access denied.</EuiText>}
     {loading && <EuiText size='s'>Loading response records…</EuiText>}
@@ -81,12 +85,12 @@ export function IncidentResponsePanel({ api, incident, disabled, command }: {
       </React.Fragment>)}
       {canRequest && <form onSubmit={event => {
         event.preventDefault();
-        if (canRequest && scope.trim() && reason.trim()) void command({ kind: 'request-response', type, scope, reason });
+        if (canRequest && scope.trim() && reason.trim() && (type !== 'scan_vulnerability' || validScanScope(scope))) void command({ kind: 'request-response', type, scope, reason });
       }}>
-        <EuiFormRow label='Response intent'><EuiSelect value={type} options={RESPONSE_INTENTS.map(value => ({ value, text: label(value) }))} onChange={e => setType(e.target.value as ResponseIntent)} /></EuiFormRow>
-        <EuiFormRow label='Response scope' helpText='Human-readable scope, not an executable target or command.'><EuiFieldText maxLength={512} value={scope} onChange={e => setScope(e.target.value)} /></EuiFormRow>
+        <EuiFormRow label='Response intent'><EuiSelect value={type} options={RESPONSE_INTENTS.map(value => ({ value, text: label(value) }))} onChange={e => { setType(e.target.value as ResponseIntent); setScope(''); }} /></EuiFormRow>
+        <EuiFormRow label='Response scope' helpText={type === 'scan_vulnerability' ? 'Exact configured manager UUID:agent:001; no wildcard or manager agent.' : 'Human-readable scope, not an executable target or command.'}><EuiFieldText maxLength={512} value={scope} onChange={e => setScope(e.target.value)} /></EuiFormRow>
         <EuiFormRow label='Response request reason'><EuiTextArea maxLength={2048} value={reason} onChange={e => setReason(e.target.value)} /></EuiFormRow>
-        <EuiButton type='submit' disabled={!scope.trim() || !reason.trim()}>Request response review</EuiButton>
+        <EuiButton type='submit' disabled={!scope.trim() || !reason.trim() || (type === 'scan_vulnerability' && !validScanScope(scope))}>Request response review</EuiButton>
       </form>}
     </>}
   </>;
