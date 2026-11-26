@@ -10,6 +10,7 @@ import { IncidentResponsePanel } from './incident-response-panel';
 import { IncidentTuningGovernancePanel } from './incident-tuning-governance-panel';
 import { IncidentRuleHistoryPanel } from './incident-rule-history-panel';
 import { IncidentAiPanel } from './incident-ai-panel';
+import { IncidentInvestigationPanel } from './incident-investigation-panel';
 import { IncidentMetadataEditor } from './incident-metadata-editor';
 
 export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string; back: () => void }) {
@@ -37,7 +38,7 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
   }, [api, id, refresh]);
 
   async function command(value: IndexerIncidentCommand) {
-    if (!incident || loading || mustReload || inFlight.current) return;
+    if (!incident || loading || mustReload || pending || inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     setError('');
@@ -55,7 +56,7 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
     }
   }
 
-  const disabled = busy || loading || mustReload;
+  const disabled = busy || loading || mustReload || pending;
   return <>
     <EuiFlexGroup alignItems='center'>
       <EuiFlexItem><EuiButtonEmpty onClick={back} disabled={busy}>Back to incidents</EuiButtonEmpty></EuiFlexItem>
@@ -114,6 +115,8 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
       {incident.owner && incident.status !== 'closed' && <IncidentMetadataEditor key={id + ':' + incident.revision} incident={incident} disabled={disabled} command={command} />}
       <EuiSpacer size='l' />
       <IncidentFindingsPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed' || !incident.owner} command={command} />
+      <EuiSpacer size='l' />
+      {!loading && !mustReload && <IncidentInvestigationPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled} />}
       <EuiSpacer size='l' />
       <IncidentRuleHistoryPanel key={id + ':' + incident.revision + ':' + refresh} incident={incident} api={api} disabled={disabled} />
       <EuiSpacer size='l' />
