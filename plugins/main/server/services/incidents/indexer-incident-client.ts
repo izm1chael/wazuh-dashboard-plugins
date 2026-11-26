@@ -1,3 +1,4 @@
+import { EntityInvestigation, validateEntityInvestigation } from '../../../common/incidents/entity-investigation';
 import { AutomationKey, AutomationPolicy, AutomationHistory, AutomationPreview, AutomationSave, SavedAutomation, validateAutomationKey, validateAutomationPolicy, validateAutomationHistory, validateAutomationPreview, validateAutomationSave, validateSavedAutomation, UUID as AUTOMATION_UUID } from '../../../common/incidents/automation-contract';
 import { AnalyticsWindowQuery, AnalyticsStatus, validateWindow, validateAnalyticsStatus } from '../../../common/incidents/analytics-contract';
 import { IndicatorInput, IndicatorCatalog, CatalogMutation, validateBatch, validateCatalog, validateMutation, UUID, safeText, timestamp } from '../../../common/incidents/indicator-contract';
@@ -173,6 +174,15 @@ export class IndexerIncidentClient {
     const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
       body: { operation: 'withdraw-sighting', expected_revision: expected, id, sighting_revision: sightingRevision, reason } });
     return validateMutation(body, expected, 1);
+  }
+
+  async investigateEntity(input: HuntInput): Promise<EntityInvestigation> {
+    let payload: HuntInput;
+    try { payload = validateHunt(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<EntityInvestigation>({
+      method: 'POST', path: '/_plugins/_setup/incident-entity/investigate', body: payload,
+    });
+    return validateEntityInvestigation(body,payload);
   }
 
   async hunt(input: HuntInput): Promise<HuntReport> {
