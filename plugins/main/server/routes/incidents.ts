@@ -1,3 +1,4 @@
+import { INDICATOR_TYPES, INDICATOR_TLP } from '../../common/incidents/indicator-contract';
 import { HUNT_FIELDS } from '../../common/incidents/hunt-contract';
 import { EVIDENCE_TYPES, RELATION_TYPES } from '../../common/incidents/contracts';
 import { IRouter, RequestHandlerContext, OpenSearchDashboardsResponseFactory } from 'opensearch_dashboards/server';
@@ -59,6 +60,28 @@ async function respond<T extends object>(
 let historyRunning = false;
 let huntRunning = false;
 export function registerIncidentRoutes(router: IRouter) {
+  const indicatorInput = schema.object({
+    type: schema.oneOf(INDICATOR_TYPES.map(value => schema.literal(value))),
+    value: schema.string({ minLength: 1, maxLength: 253 }),
+    source: schema.string({ minLength: 1, maxLength: 256 }),
+    external_id: schema.maybe(schema.string({ minLength: 47, maxLength: 47 })),
+    confidence: schema.number({ min: 0, max: 100 }),
+    tlp: schema.oneOf(INDICATOR_TLP.map(value => schema.literal(value))),
+    valid_from: schema.string({ minLength: 20, maxLength: 24 }),
+    valid_until: schema.string({ minLength: 20, maxLength: 24 }),
+  });
+  const catalogRevision = schema.number({ min: 0, max: 2147483646 });
+  router.post({ path: '/indexer/incident-indicators/read', validate: { body: schema.object({}) } },
+    async (context, request, response) => respond(response, () => client(context).indicators()));
+  router.post({ path: '/indexer/incident-indicators/add', validate: { body: schema.object({
+    expected_revision: catalogRevision, indicators: schema.arrayOf(indicatorInput, { minSize: 1, maxSize: 20 }),
+  }) } }, async (context, request, response) => respond(response, () => client(context).addIndicators(
+    request.body.expected_revision, request.body.indicators.map(row => ({ ...row, external_id: row.external_id ?? null })))));
+  router.post({ path: '/indexer/incident-indicators/revoke', validate: { body: schema.object({
+    expected_revision: catalogRevision, id: idSchema, reason: schema.string({ minLength: 1, maxLength: 1024 }),
+  }) } }, async (context, request, response) => respond(response, () => client(context).revokeIndicator(
+    request.body.expected_revision, request.body.id, request.body.reason)));
+
   router.post({
     path: '/indexer/incident-hunt/search',
     validate: { body: schema.object({
