@@ -1,3 +1,4 @@
+import { AutomationKey, AutomationPolicy, AutomationHistory, AutomationPreview, AutomationSave, SavedAutomation, validateAutomationKey, validateAutomationPolicy, validateAutomationHistory, validateAutomationPreview, validateAutomationSave, validateSavedAutomation, UUID as AUTOMATION_UUID } from '../../../common/incidents/automation-contract';
 import { AnalyticsWindowQuery, AnalyticsStatus, validateWindow, validateAnalyticsStatus } from '../../../common/incidents/analytics-contract';
 import { IndicatorInput, IndicatorCatalog, CatalogMutation, validateBatch, validateCatalog, validateMutation, UUID, safeText, timestamp } from '../../../common/incidents/indicator-contract';
 import { HuntInput, HuntReport, validateHunt, validateHuntReport } from '../../../common/incidents/hunt-contract';
@@ -98,6 +99,31 @@ function commandBody(command: IndexerIncidentCommand): object {
  */
 export class IndexerIncidentClient {
   constructor(private readonly transport: CurrentUserIncidentTransport) {}
+
+  async readAutomation(input: AutomationKey): Promise<SavedAutomation> {
+    let key: AutomationKey;
+    try { key = validateAutomationKey(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<unknown>({ method: 'POST', path: '/_plugins/_setup/incident-automation/read', body: { operation: 'policy', ...key } });
+    return validateSavedAutomation(body, key);
+  }
+  async saveAutomation(input: unknown): Promise<AutomationSave> {
+    let policy: AutomationPolicy;
+    try { policy = validateAutomationPolicy(input); } catch (_) { throw { statusCode: 400 }; }
+    if (Buffer.byteLength(JSON.stringify(policy), 'utf8') > 32768) throw { statusCode: 400 };
+    const { body } = await this.transport.request<unknown>({ method: 'POST', path: '/_plugins/_setup/incident-automation/save', body: policy });
+    return validateAutomationSave(body, policy);
+  }
+  async previewAutomation(input: AutomationKey, incident: string): Promise<AutomationPreview> {
+    let key: AutomationKey;
+    try { key = validateAutomationKey(input); if (!AUTOMATION_UUID.test(incident)) throw new Error('Invalid ID'); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<unknown>({ method: 'POST', path: '/_plugins/_setup/incident-automation/read', body: { operation: 'preview', ...key, incident_id: incident } });
+    return validateAutomationPreview(body, key, incident);
+  }
+  async automationHistory(incident: string): Promise<AutomationHistory> {
+    if (!AUTOMATION_UUID.test(incident)) throw { statusCode: 400 };
+    const { body } = await this.transport.request<unknown>({ method: 'POST', path: '/_plugins/_setup/incident-automation/read', body: { operation: 'history', incident_id: incident } });
+    return validateAutomationHistory(body, incident);
+  }
 
   async analyticsStatus(input: AnalyticsWindowQuery): Promise<AnalyticsStatus> {
     let query: AnalyticsWindowQuery;
