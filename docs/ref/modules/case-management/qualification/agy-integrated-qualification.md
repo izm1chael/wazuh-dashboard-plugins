@@ -27,3 +27,7 @@ Include the later handover and investigation commits in both checkout SHAs. Exec
 ## Investigation register follow-on gate
 
 Include both forks' latest investigation-register commits. Execute all five qualification groups in ../incident-investigation-register.md, including additive mapping upgrades, actual collaboration role matrix, local file digest network inspection, and malformed projection tests. Treat relationship assertions and external artifact attestations as analyst metadata, not verified evidence. Record exact SHAs and results in the consolidated qualification receipt.
+
+## Historical entity and IOC hunt follow-on gate
+
+Include both forks' latest hunt commits. Execute the four qualification groups in ../incident-historical-hunt.md. Verify real field mappings, actual hunt/search permission intersection, DLS/FLS, partial results, local concurrency and timeline attachment. Record exact SHAs and results in the consolidated qualification receipt. Manual exact hunting is not a persistent IOC watchlist, external enrichment or autonomous Agentic SOC search.
