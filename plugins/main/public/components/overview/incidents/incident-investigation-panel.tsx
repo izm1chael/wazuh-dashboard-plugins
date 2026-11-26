@@ -63,9 +63,10 @@ export function IncidentInvestigationPanel({ api, incident, disabled }: {
         </EuiCallOut>}
       <EuiSpacer size='s' />
       <EuiText size='s'>Observed ATT&amp;CK techniques: {intelligence.techniques.join(', ') || 'None in visible observations'}. Tactics: {intelligence.tactics.join(', ') || 'None in visible observations'}.</EuiText>
+      <EuiText size='s'>Entity menu: {Math.min(intelligence.entities.length, 250)} of {intelligence.entities.length} distinct visible entities, ranked by observed frequency. Use timeline text filtering for references.</EuiText>
       <EuiFormRow label='Observed entity pivot'>
         <EuiSelect value={entity} onChange={e => { setEntity(e.target.value); setFilter('all'); }}
-          options={[{ value: '', text: 'All visible entities' }, ...intelligence.entities.map(e => ({
+          options={[{ value: '', text: 'All visible entities' }, ...intelligence.entities.slice(0, 250).map(e => ({
             value: JSON.stringify([e.kind, e.value]), text: e.kind + ': ' + e.value + ' (' + e.count + ')',
           }))]} />
       </EuiFormRow>
