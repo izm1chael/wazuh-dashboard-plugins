@@ -9,6 +9,7 @@ const LABELS: Record<string, string> = {
   handover_offered: 'Handover offered', handover_accepted: 'Handover accepted', handover_cancelled: 'Handover cancelled or declined',
   created: 'Incident created', assign: 'Assignment changed', start_triage: 'Triage started',
   activate: 'Investigation started', close: 'Incident closed', reopen: 'Incident reopened',
+  soar_dispatch_reserved: 'SOAR scan dispatch reserved', soar_dispatch_reported: 'SOAR manager outcome reported',
   response_requested: 'Response requested', response_approved: 'Response approved', response_rejected: 'Response rejected',
   response_cancelled: 'Response cancelled', response_outcome_reported: 'Manual response outcome reported',
   tuning_proposed: 'Detection tuning proposal recorded', tuning_accepted_for_review: 'Tuning accepted for human review',
