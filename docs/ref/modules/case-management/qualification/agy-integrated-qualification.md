@@ -31,3 +31,7 @@ Include both forks' latest investigation-register commits. Execute all five qual
 ## Historical entity and IOC hunt follow-on gate
 
 Include both forks' latest hunt commits. Execute the four qualification groups in ../incident-historical-hunt.md. Verify real field mappings, actual hunt/search permission intersection, DLS/FLS, partial results, local concurrency and timeline attachment. Record exact SHAs and results in the consolidated qualification receipt. Manual exact hunting is not a persistent IOC watchlist, external enrichment or autonomous Agentic SOC search.
+
+## Threat intelligence catalog phase gate
+
+Include both forks' final CTI phase commits. Execute all six qualification groups in ../incident-threat-intelligence.md. Verify isolated state index, explicit grants, CAS and revision conservation, external sighting attestation boundaries, restricted STIX subset, local export, and historical hunt DLS/FLS. No production qualification based on standalone validators alone. Record exact SHAs and full build, browser, OpenSearch and independent STIX evidence in the integrated receipt.
