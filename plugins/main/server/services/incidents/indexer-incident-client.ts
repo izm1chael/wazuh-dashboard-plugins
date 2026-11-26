@@ -1,3 +1,4 @@
+import { validateInvestigationRegister, validateTags } from '../../../common/incidents/investigation-register-validation';
 import type { IssuedResponsePage, IncidentResponsePage, IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 import { validateCorrelationPolicy, validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
@@ -22,6 +23,11 @@ const ROOT = '/_plugins/_setup/incidents';
 
 function commandBody(command: IndexerIncidentCommand): object {
   switch (command.kind) {
+    case 'set-tags': return { tags: command.tags };
+    case 'add-relation': return { target_id: command.target_id, type: command.type, reason: command.reason };
+    case 'remove-relation': return { relation_id: command.relation_id, reason: command.reason };
+    case 'register-evidence': return { type: command.type, label: command.label, sha256: command.sha256, custody_reference: command.custody_reference };
+    case 'withdraw-evidence': return { evidence_id: command.evidence_id, reason: command.reason };
     case 'offer-handover':
       return { target: command.target, reason: command.reason };
     case 'accept-handover':
@@ -238,6 +244,7 @@ export class IndexerIncidentClient {
     }
     validatePlaybooks(body, id);
     validateTuningProposals(body, id);
+    validateInvestigationRegister(body, id);
     return body;
   }
 
@@ -333,6 +340,7 @@ function validateCursor(cursor: QueueCursor): void {
 
 function validateSummary(incident: IncidentSummary, id?: string, revision?: number): void {
   if (!incident) throw new Error('Invalid incident projection');
+  if (incident.tags !== undefined) validateTags(incident.tags);
   const offer = incident.handover;
   if (offer !== undefined && offer !== null &&
       (typeof offer !== 'object' || Object.keys(offer).length !== 3 ||
@@ -351,7 +359,9 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
       Object.prototype.hasOwnProperty.call(incident, 'response_requests') ||
       Object.prototype.hasOwnProperty.call(incident, 'playbook_runs') ||
       Object.prototype.hasOwnProperty.call(incident, 'ai_feedback_ids') ||
-      Object.prototype.hasOwnProperty.call(incident, 'tuning_proposals')) {
+      Object.prototype.hasOwnProperty.call(incident, 'tuning_proposals') ||
+      Object.prototype.hasOwnProperty.call(incident, 'incident_relations') ||
+      Object.prototype.hasOwnProperty.call(incident, 'evidence_register')) {
     throw new Error('Invalid incident projection; reload before retrying');
   }
 }
