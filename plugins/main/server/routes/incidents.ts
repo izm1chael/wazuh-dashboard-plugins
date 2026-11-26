@@ -81,6 +81,15 @@ export function registerIncidentRoutes(router: IRouter) {
   })));
 
   router.get({
+    path: ROOT + '/{id}/collaboration',
+    validate: { params: schema.object({ id: idSchema }), query: schema.object({
+      before: schema.number({ min: 0, max: 2147483647, defaultValue: 0 }),
+      limit: schema.number({ min: 1, max: 50, defaultValue: 50 }),
+    }) },
+  }, async (context, request, response) => respond(response, () =>
+    client(context).collaboration(request.params.id, request.query.before, request.query.limit)));
+
+  router.get({
     path: ROOT + '/{id}/activity',
     validate: { params: schema.object({ id: idSchema }), query: schema.object({
       before: schema.number({ min: 0, max: 2147483647, defaultValue: 0 }),
@@ -139,6 +148,23 @@ export function registerIncidentRoutes(router: IRouter) {
   router.post({ path: ROOT + '/{id}/reopen', validate: { params, query, body: schema.object({ reason: reasonSchema }) } },
     async (context, request, response) => respond(response, () =>
       client(context).command(request.params.id, request.query.expected_revision, { kind: 'reopen', ...request.body })));
+
+  router.post({ path: ROOT + '/{id}/add-note', validate: { params, query, body: schema.object({
+    body: schema.string({ minLength: 1, maxLength: 8192 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'add-note', ...request.body })));
+
+  router.post({ path: ROOT + '/{id}/create-task', validate: { params, query, body: schema.object({
+    title: schema.string({ minLength: 1, maxLength: 1024 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'create-task', ...request.body })));
+
+  for (const kind of ['complete-task', 'reopen-task'] as const) {
+    router.post({ path: ROOT + '/{id}/' + kind, validate: { params, query, body: schema.object({
+      task_id: schema.string({ minLength: 1, maxLength: 64 }),
+    }) } }, async (context, request, response) => respond(response, () =>
+      client(context).command(request.params.id, request.query.expected_revision, { kind, ...request.body })));
+  }
 
   for (const kind of ['attach-finding', 'detach-finding'] as const) {
     router.post({ path: ROOT + '/{id}/' + kind, validate: { params, query, body: schema.object({

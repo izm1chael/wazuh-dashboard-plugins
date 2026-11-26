@@ -1,4 +1,4 @@
-import type { ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import type { CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 import { validateIncidentId } from './incident-id';
 
@@ -37,6 +37,13 @@ function commandBody(command: IndexerIncidentCommand): object {
     case 'attach-finding':
     case 'detach-finding':
       return { index: command.index, document_id: command.document_id };
+    case 'add-note':
+      return { body: command.body };
+    case 'create-task':
+      return { title: command.title };
+    case 'complete-task':
+    case 'reopen-task':
+      return { task_id: command.task_id };
     default:
       throw new Error('Unknown incident command');
   }
@@ -78,6 +85,26 @@ export class IndexerIncidentClient {
     if (!body) throw new Error('Invalid incident detail');
     validateSummary(body.incident, id);
     return body.incident;
+  }
+
+  async collaboration(id: string, before = 0, limit = 50): Promise<CollaborationPage> {
+    validateIncidentId(id);
+    if (!Number.isSafeInteger(before) || before < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+      throw new Error('Invalid collaboration page');
+    }
+    const { body } = await this.transport.request<CollaborationPage>({
+      method: 'GET', path: ROOT + '/' + encodeURIComponent(id) + '/collaboration', querystring: { before, limit },
+    });
+    if (!body || !Array.isArray(body.notes) || body.notes.length > limit || !Array.isArray(body.tasks) || body.tasks.length > 100 ||
+        !Number.isSafeInteger(body.observed_revision) || body.observed_revision < 1 || typeof body.activity_pending !== 'boolean' ||
+        body.notes.some(note => note.incident_id !== id || note.id !== id + ':' + note.revision ||
+          !Number.isSafeInteger(note.revision) || note.revision < 1 || note.revision > body.observed_revision ||
+          typeof note.body !== 'string' || note.body.length > 8192) ||
+        body.tasks.some(task => typeof task.id !== 'string' || !task.id.startsWith(id + ':') ||
+          typeof task.title !== 'string' || !['open', 'completed'].includes(task.status))) {
+      throw new Error('Invalid collaboration response');
+    }
+    return body;
   }
 
   async activity(id: string, before = 0, limit = 50): Promise<ActivityPage> {

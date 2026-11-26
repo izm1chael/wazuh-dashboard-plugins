@@ -6,6 +6,7 @@ import type { IncidentApi } from './incident-api';
 const LABELS: Record<string, string> = {
   created: 'Incident created', assign: 'Assignment changed', start_triage: 'Triage started',
   activate: 'Investigation started', close: 'Incident closed', reopen: 'Incident reopened',
+  note_added: 'Note added', task_created: 'Task created', task_completed: 'Task completed', task_reopened: 'Task reopened',
   edit: 'Metadata changed', attach_finding: 'Finding attached', detach_finding: 'Finding detached',
 };
 const display = (value: string | number | boolean | null) => value === null ? '—' : String(value);

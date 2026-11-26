@@ -19,6 +19,7 @@ const item: IncidentSummary = {
 
 function setup() {
   const api = {
+    collaboration: jest.fn().mockResolvedValue({ notes: [], tasks: [], observed_revision: 1, activity_pending: false }),
     activity: jest.fn().mockResolvedValue({ events: [], observed_revision: 1, activity_pending: false }),
     findings: jest.fn().mockResolvedValue({ findings: [], revision: 1, unavailable_count: 0 }),
     list: jest.fn().mockResolvedValue({ incidents: [item] }),
@@ -77,6 +78,19 @@ describe('experimental incident workspace', () => {
     expect(await screen.findByText('Incident created')).toBeInTheDocument();
     expect(await screen.findByText('Audit delivery pending')).toBeInTheDocument();
     expect(api.findings).toHaveBeenCalledWith(ID, 0, 1);
+  });
+
+  test('renders notes and tasks and adds an attributed note through the revision-checked command', async () => {
+    const { api, back } = setup();
+    api.collaboration.mockResolvedValue({ notes: [{ id: ID + ':1', incident_id: ID, revision: 1, actor: 'reviewer', at: NOW, body: 'Analyst observation' }],
+      tasks: [{ id: ID + ':2', title: 'Check logs', status: 'open', created_by: 'reviewer', created_at: NOW, completed_by: null, completed_at: null }],
+      observed_revision: 1, activity_pending: false });
+    render(<IncidentDetail api={api as IncidentApi} id={ID} back={back} />);
+    expect(await screen.findByText('Analyst observation')).toBeInTheDocument();
+    expect(await screen.findByText('Check logs')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Investigation note'), { target: { value: 'New observation' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add note' }));
+    await waitFor(() => expect(api.command).toHaveBeenCalledWith(ID, 1, { kind: 'add-note', body: 'New observation' }));
   });
 
   test('sends expected revision and blocks another mutation until reload after failure', async () => {

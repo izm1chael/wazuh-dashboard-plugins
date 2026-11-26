@@ -43,7 +43,10 @@ export type IndexerIncidentCommand =
   | { kind: 'edit'; title?: string; description?: string; severity?: Severity; priority?: Priority; tlp?: Tlp }
   | { kind: 'close'; classification: Classification; reason: string }
   | { kind: 'reopen'; reason: string }
-  | { kind: 'attach-finding' | 'detach-finding'; index: string; document_id: string };
+  | { kind: 'attach-finding' | 'detach-finding'; index: string; document_id: string }
+  | { kind: 'add-note'; body: string }
+  | { kind: 'create-task'; title: string }
+  | { kind: 'complete-task' | 'reopen-task'; task_id: string };
 
 export interface QueueCursor { time: number; id: string }
 export interface QueueQuery {
@@ -82,4 +85,15 @@ export interface ActivityPage {
   observed_revision: number;
   activity_pending: boolean;
   next_before?: number;
+}
+
+export interface IncidentNote {
+  id: string; incident_id: string; revision: number; actor: string; at: string; body: string;
+}
+export interface IncidentTask {
+  id: string; title: string; status: 'open' | 'completed'; created_by: string; created_at: string;
+  completed_by: string | null; completed_at: string | null;
+}
+export interface CollaborationPage {
+  notes: IncidentNote[]; tasks: IncidentTask[]; observed_revision: number; activity_pending: boolean; next_before?: number;
 }
