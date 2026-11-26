@@ -334,9 +334,10 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
 
 function validObservation(value: FindingObservation): boolean {
   const nullableText = (text: unknown) => text === null || (typeof text === 'string' && text.length <= 1024);
-  return !!value && Object.keys(value).every(key => ['index', 'document_id', 'timestamp', 'rule_id', 'rule_title', 'wazuh_rule_id', 'entities', 'techniques', 'tactics'].includes(key)) &&
+  return !!value && Object.keys(value).every(key => ['index', 'document_id', 'timestamp', 'rule_id', 'rule_title', 'wazuh_rule_id', 'wazuh_rule_uuid', 'entities', 'techniques', 'tactics'].includes(key)) &&
     nullableText(value.timestamp) && nullableText(value.rule_id) && nullableText(value.rule_title) &&
-    (value.wazuh_rule_id === undefined || nullableText(value.wazuh_rule_id)) &&
+    (value.wazuh_rule_id === undefined || value.wazuh_rule_id === null || /^[A-Za-z0-9_-]{1,128}$/.test(value.wazuh_rule_id)) &&
+    (value.wazuh_rule_uuid === undefined || value.wazuh_rule_uuid === null || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value.wazuh_rule_uuid)) &&
     Array.isArray(value.entities) && value.entities.length <= 240 &&
     value.entities.every(entity => !!entity && Object.keys(entity).every(key => ['kind', 'value', 'field'].includes(key)) &&
       typeof entity.kind === 'string' && entity.kind.length <= 64 && typeof entity.field === 'string' && entity.field.length <= 128 &&

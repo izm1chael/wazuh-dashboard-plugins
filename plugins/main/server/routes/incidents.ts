@@ -1,5 +1,6 @@
 import { IRouter, RequestHandlerContext, OpenSearchDashboardsResponseFactory } from 'opensearch_dashboards/server';
 import { schema } from '@osd/config-schema';
+import { ruleHistory } from '../services/incidents/rule-history-service';
 import { RESPONSE_INTENTS, RESPONSE_OUTCOMES } from '../../common/incidents/response-validation';
 import { IndexerIncidentClient, CurrentUserIncidentTransport, IndexerIncidentCommand, QueueQuery } from '../services/incidents/indexer-incident-client';
 import { IncidentDomainError, SEVERITIES, PRIORITIES, TLP_VALUES, CLASSIFICATIONS } from '../services/incidents/incident-domain';
@@ -51,7 +52,27 @@ async function respond<T extends object>(
   }
 }
 
+// Keep this potentially expensive fan-out separate from ordinary queue requests.
+let historyRunning = false;
 export function registerIncidentRoutes(router: IRouter) {
+  router.get({
+    path: ROOT + '/{id}/rule-history',
+    validate: { params: schema.object({ id: idSchema }), query: schema.object({
+      expected_revision: revisionSchema, rule_uuid: idSchema,
+    }) },
+  }, async (context, request, response) => respond(response, async () => {
+    if (historyRunning) throw { statusCode: 429 };
+    historyRunning = true;
+    const deadline = Date.now() + 30000;
+    let aborted = false;
+    const subscription = request.events.aborted$.subscribe(() => { aborted = true; });
+    try {
+      return await ruleHistory(client(context), request.params.id, request.query.expected_revision, request.query.rule_uuid, () => {
+        if (aborted || Date.now() > deadline) throw { statusCode: 503 };
+      });
+    } finally { subscription.unsubscribe(); historyRunning = false; }
+  }));
+
   router.post({
     path: '/indexer/incident-metrics/report',
     validate: { body: schema.object({
