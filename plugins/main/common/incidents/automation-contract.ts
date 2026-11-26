@@ -12,7 +12,7 @@ export interface AutomationActions {
 }
 export interface AutomationRule {
   id: string; trigger: 'created' | 'updated'; minimum_severity: typeof SEVERITIES[number];
-  status: typeof STATUSES[number]; minimum_findings: number; unassigned_only: boolean; required_tags: string[];
+  status: typeof STATUSES[number]; minimum_findings: number; unassigned_only: boolean; required_tags: string[]; correlation_policy_id: string | null;
   actions: AutomationActions;
 }
 export interface AutomationPolicy { policy_id: string; policy_version: number; rules: AutomationRule[] }
@@ -76,7 +76,7 @@ export function validateAutomationPolicy(value: unknown): AutomationPolicy {
   if (!Array.isArray(row.rules) || row.rules.length < 1 || row.rules.length > 10) return fail();
   const rules: AutomationRule[] = row.rules.map(raw => {
     const rule = obj(raw);
-    exact(rule, ['id', 'trigger', 'minimum_severity', 'status', 'minimum_findings', 'unassigned_only', 'required_tags', 'actions']);
+    exact(rule, ['id', 'trigger', 'minimum_severity', 'status', 'minimum_findings', 'unassigned_only', 'required_tags', 'correlation_policy_id', 'actions']);
     const input = obj(rule.actions), actions: AutomationActions = {};
     const keys = Object.keys(input);
     if (!keys.length || keys.some(k => !['assign_to', 'raise_severity', 'raise_priority', 'add_tags', 'create_task', 'apply_playbook'].includes(k))) return fail();
@@ -92,7 +92,7 @@ export function validateAutomationPolicy(value: unknown): AutomationPolicy {
     return { id: pattern(rule.id, RULE), trigger: choice(rule.trigger, ['created', 'updated'] as const),
       minimum_severity: choice(rule.minimum_severity, SEVERITIES), status: choice(rule.status, STATUSES),
       minimum_findings: integer(rule.minimum_findings, 0, 1000), unassigned_only: bool(rule.unassigned_only),
-      required_tags: tags(rule.required_tags), actions };
+      required_tags: tags(rule.required_tags), correlation_policy_id: rule.correlation_policy_id === null ? null : pattern(rule.correlation_policy_id, UUID), actions };
   });
   if (new Set(rules.map(rule => rule.id)).size !== rules.length) return fail();
   return { ...key, rules };
