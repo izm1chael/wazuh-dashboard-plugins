@@ -411,6 +411,20 @@ export function registerIncidentRoutes(router: IRouter) {
   }) } }, async (context, request, response) => respond(response, () =>
     client(context).command(request.params.id, request.query.expected_revision, { kind: 'apply-playbook', ...request.body })));
 
+  router.post({ path: ROOT + '/{id}/save-hunt-bookmark', validate: { params, query, body: schema.object({
+    label: schema.string({ minLength: 1, maxLength: 128 }),
+    query: schema.object({
+      field: schema.oneOf(HUNT_FIELDS.map(value => schema.literal(value))),
+      values: schema.arrayOf(schema.string({ minLength: 1, maxLength: 256 }), { minSize: 1, maxSize: 20 }),
+      from: schema.string({ minLength: 20, maxLength: 30 }), until: schema.string({ minLength: 20, maxLength: 30 }),
+    }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'save-hunt-bookmark', ...request.body })));
+  router.post({ path: ROOT + '/{id}/withdraw-hunt-bookmark', validate: { params, query, body: schema.object({
+    bookmark_id: schema.string({ minLength: 38, maxLength: 64 }), reason: schema.string({ minLength: 1, maxLength: 1024 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'withdraw-hunt-bookmark', ...request.body })));
+
   router.post({ path: ROOT + '/{id}/start-workflow', validate: { params, query, body: schema.object({
     template_id: schema.oneOf([schema.literal('vulnerability_investigation'), schema.literal('evidence_collection')]),
     version: schema.literal(1), scope: schema.string({ minLength: 1, maxLength: 512 }),
