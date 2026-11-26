@@ -1,4 +1,7 @@
 import { schema } from '@osd/config-schema';
+import { createConversation } from '../conversation-store';
+import { resolveWazuhUsername } from '../identity';
+import { buildPrivateReport } from '../incident-assessment/private-report';
 import { IRouter } from '../../../../src/core/server';
 import type { ProviderConfig } from '../../common/types';
 import type { WazuhAiAssistantConfigType } from '../config';
@@ -21,12 +24,16 @@ export function registerIncidentAssessmentRoute(router: IRouter, settings: Setti
     path: '/api/wazuh_ai_assistant/incident-assessment',
     validate: { body: schema.object({ incident_id: schema.string({ minLength: 36, maxLength: 36 }),
       expected_revision: schema.number({ min: 1, max: 2147483647 }), consent: schema.literal(true),
+      save_private_report: schema.boolean({ defaultValue: false }),
       mode: schema.oneOf([schema.literal('ai_review'), schema.literal('agentic_soc')]) }) },
   }, async (context, request, response) => {
     const { incident_id: id, expected_revision: revision } = request.body;
     if (!UUID.test(id) || !Number.isSafeInteger(revision)) return response.badRequest({ body: { message: 'Invalid incident identity' } });
     const mode = request.body.mode;
     if (mode === 'agentic_soc' && !settings.agenticEnabled) return response.customError({ statusCode: 403, body: { message: 'Agentic SOC disabled' } });
+    if (request.body.save_private_report && !settings.privateReportSavingEnabled) {
+      return response.forbidden({ body: { message: 'Private assessment saving disabled' } });
+    }
     if (running) return response.customError({ statusCode: 429, body: { message: 'Incident assessment busy' } });
     running = true;
     const controller = new AbortController();
@@ -38,6 +45,10 @@ export function registerIncidentAssessmentRoute(router: IRouter, settings: Setti
       const read = async () => checkedSummary((await transport.request({ method: 'GET', path })).body,
         id, revision, settings.allowedTlp);
       const summary = await read();
+      const owner = request.body.save_private_report ? await resolveWazuhUsername(context, request) : undefined;
+      if (request.body.save_private_report && (!owner || owner === '_shared')) {
+        return response.forbidden({ body: { message: 'Private report owner unavailable' } });
+      }
       const page = await transport.request({ method: 'GET', path: path + '/findings',
         querystring: { limit: PAGE_SIZE, offset: 0, expected_revision: revision } });
       const digest = buildDigest(summary, page.body);
@@ -103,8 +114,21 @@ export function registerIncidentAssessmentRoute(router: IRouter, settings: Setti
       }
       await read();
       if (controller.signal.aborted) throw new Error('Assessment cancelled');
-      return response.ok({ body: { incident_id: id, observed_revision: revision, mode, advisory_only: true,
-        digest, probes, ...result } });
+      const assessment = { incident_id: id, observed_revision: revision, mode, advisory_only: true as const,
+        digest, probes, ...result };
+      const report = buildPrivateReport(assessment, config.id, config.model, new Date());
+      let private_report: { state: 'not_requested' | 'saved' | 'unconfirmed'; id?: string } = { state: 'not_requested' };
+      if (request.body.save_private_report) {
+        // No retries: an ambiguous write may already have created a conversation.
+        try {
+          await read();
+          if (controller.signal.aborted || await resolveWazuhUsername(context, request) !== owner) throw new Error('Save preflight failed');
+          const saved = await createConversation(context, report.document);
+          if (!saved || typeof saved.id !== 'string' || !saved.id) throw new Error('Missing saved report identity');
+          private_report = { state: 'saved', id: saved.id };
+        } catch (_) { private_report = { state: 'unconfirmed' }; }
+      }
+      return response.ok({ body: { ...assessment, provenance: report.provenance, private_report } });
     } catch (_) {
       // Never log raw provider output, credentials, source evidence or transport errors here.
       return response.customError({ statusCode: 409, body: { message: 'Assessment unavailable, denied, stale or invalid. No recommendation was applied.' } });

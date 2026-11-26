@@ -10,6 +10,8 @@ interface Assessment {
   incident_id: string; observed_revision: number; mode: Mode; advisory_only: true;
   digest: { facts: Fact[]; scope: 'first_finding_page' | 'expanded_linked_findings'; complete_link_coverage: boolean };
   probes: string[]; recommendations: Cited[]; hypothesis?: Cited; tuning?: Cited[];
+  provenance?: { assessment_id: string; assessed_at: string; model: string; digest_sha256: string; schema_version: 1; provider_id: string };
+  private_report?: { state: 'not_requested' | 'saved' | 'unconfirmed'; id?: string };
 }
 const ACTIONS: Record<string, string> = {
   review_detection: 'Review the detection and its triggering conditions',
@@ -65,15 +67,16 @@ function validate(result: Assessment, incident: IncidentSummary, mode: Mode): vo
     throw new Error('Invalid review result');
   }
 }
-const request = (incident: IncidentSummary, mode: Mode) => getHttp().post<Assessment>('/api/wazuh_ai_assistant/incident-assessment',
-  { body: JSON.stringify({ incident_id: incident.id, expected_revision: incident.revision, mode, consent: true }) });
+const request = (incident: IncidentSummary, mode: Mode, savePrivate: boolean) => getHttp().post<Assessment>('/api/wazuh_ai_assistant/incident-assessment',
+  { body: JSON.stringify({ incident_id: incident.id, expected_revision: incident.revision, mode, consent: true, save_private_report: savePrivate }) });
 const label = (kind: string) => kind.replace(/_/g, ' ');
 const valueText = (value: Fact['value']) => Array.isArray(value) ? value.join(', ') || 'None in sampled fields' : String(value);
 
 export function IncidentAiPanel({ incident, disabled, assess = request }: {
-  incident: IncidentSummary; disabled: boolean; assess?: (incident: IncidentSummary, mode: Mode) => Promise<Assessment>;
+  incident: IncidentSummary; disabled: boolean; assess?: (incident: IncidentSummary, mode: Mode, savePrivate: boolean) => Promise<Assessment>;
 }) {
   const [consent, setConsent] = useState(false);
+  const [savePrivate, setSavePrivate] = useState(false);
   const [busy, setBusy] = useState<Mode>();
   const [result, setResult] = useState<Assessment>();
   const [error, setError] = useState('');
@@ -84,9 +87,9 @@ export function IncidentAiPanel({ incident, disabled, assess = request }: {
   async function run(mode: Mode) {
     if (blocked || inFlight.current) return;
     inFlight.current = true;
-    setConsent(false); setBusy(mode); setResult(undefined); setError('');
+    setConsent(false); setSavePrivate(false); setBusy(mode); setResult(undefined); setError('');
     try {
-      const response = await assess(incident, mode);
+      const response = await assess(incident, mode, savePrivate);
       validate(response, incident, mode);
       if (mounted.current) setResult(response);
     } catch (_) {
@@ -106,6 +109,9 @@ export function IncidentAiPanel({ incident, disabled, assess = request }: {
     <EuiSpacer size='s' />
     <EuiCheckbox id={'incident-ai-consent-' + incident.id} checked={consent} disabled={disabled || !!busy}
       label='I authorize this assessment under the configured provider and disclosure policy' onChange={event => setConsent(event.target.checked)} />
+    <EuiCheckbox id={'incident-ai-save-' + incident.id} checked={savePrivate} disabled={disabled || !!busy}
+      label='Save a private editable report in AI Assistant conversation history (requires separate server enablement; retention applies)'
+      onChange={event => setSavePrivate(event.target.checked)} />
     <EuiFlexGroup wrap>
       <EuiFlexItem>
         <EuiPanel hasBorder hasShadow={false} paddingSize='m'>
@@ -137,7 +143,10 @@ export function IncidentAiPanel({ incident, disabled, assess = request }: {
         <h4>Assessment facts</h4><dl>{result.digest.facts.map(fact => <React.Fragment key={fact.ref}>
           <dt>{fact.ref} · {label(fact.kind)}</dt><dd>{valueText(fact.value)}</dd>
         </React.Fragment>)}</dl>
-        <p>References identify bounded facts, not verified causal evidence. Results are not automatically saved.</p>
+        {result.provenance && <p>Assessment ID: {result.provenance.assessment_id} · Model: {result.provenance.model} · {result.provenance.assessed_at} · Digest SHA-256: {result.provenance.digest_sha256}</p>}
+        {result.private_report?.state === 'saved' && <p>Private report saved in AI Assistant history. Session ID: {result.private_report.id}. This copy is editable and subject to retention; do not continue it with an unapproved provider.</p>}
+        {result.private_report?.state === 'unconfirmed' && <p>Private report save could not be confirmed. Check AI Assistant history before trying again.</p>}
+        <p>References identify bounded facts, not verified causal evidence. No shared incident evidence is automatically written.</p>
       </EuiText>
     </>}
   </>;

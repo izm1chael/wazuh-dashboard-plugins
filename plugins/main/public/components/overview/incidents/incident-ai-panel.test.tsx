@@ -10,15 +10,15 @@ describe('incident AI modes', () => {
     render(<IncidentAiPanel incident={incident} disabled={false} assess={assess} />);
     expect(screen.getByRole('button', { name: 'AI Review' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Agentic SOC' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByLabelText(/I authorize this assessment/));
     fireEvent.click(screen.getByRole('button', { name: 'Agentic SOC' }));
-    expect(assess).toHaveBeenCalledWith(incident, 'agentic_soc');
+    expect(assess).toHaveBeenCalledWith(incident, 'agentic_soc', false);
     await screen.findByText(/Assessment unavailable/);
     expect(screen.getByRole('button', { name: 'AI Review' })).toBeDisabled();
   });
   test('blocks restricted disclosure labels', () => {
     render(<IncidentAiPanel incident={{ ...incident, tlp: 'TLP:RED' }} disabled={false} assess={jest.fn()} />);
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByLabelText(/I authorize this assessment/));
     expect(screen.getByRole('button', { name: 'Agentic SOC' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'AI Review' })).toBeDisabled();
   });
