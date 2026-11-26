@@ -118,7 +118,7 @@ export function IncidentDetail({ api, id, back, openRelated }: { api: IncidentAp
       <EuiSpacer size='l' />
       <IncidentFindingsPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed' || !incident.owner} command={command} />
       <EuiSpacer size='l' />
-      {!loading && !mustReload && <IncidentInvestigationPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled} />}
+      {!loading && !mustReload && <IncidentInvestigationPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled} attach={command} />}
       <EuiSpacer size='l' />
       <IncidentRuleHistoryPanel key={id + ':' + incident.revision + ':' + refresh} incident={incident} api={api} disabled={disabled} />
       <EuiSpacer size='l' />
