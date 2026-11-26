@@ -60,6 +60,9 @@ export type IndexerIncidentCommand =
   | ({ kind: 'create-tuning-proposal' } & TuningProposalInput)
   | { kind: 'withdraw-tuning-proposal'; proposal_id: string; reason: string }
   | { kind: 'review-tuning-proposal'; proposal_id: string; decision: 'accepted_for_review' | 'rejected'; fixture_sha256: string; reason: string }
+  | { kind: 'start-workflow'; template_id: WorkflowTemplate; version: 1; scope: string; reason: string }
+  | { kind: 'advance-workflow'; run_id: string }
+  | { kind: 'cancel-workflow'; run_id: string; reason: string }
   | { kind: 'apply-playbook'; template_id: string; version: number }
   | { kind: 'request-response'; type: ResponseIntent; scope: string; reason: string }
   | { kind: 'approve-response' | 'reject-response' | 'cancel-response'; response_id: string; reason: string }
@@ -186,7 +189,17 @@ export interface IncidentResponseRecord {
   finalized_by: string | null; finalized_at: string | null; final_reason: string | null;
   execution_verified: false;
 }
+export type WorkflowTemplate = 'vulnerability_investigation' | 'evidence_collection';
+export type WorkflowStage = 'prepare' | 'response' | 'review' | 'completed' | 'failed' | 'cancelled';
+export interface WorkflowStep {
+  stage: WorkflowStage; revision: number; actor: string; at: string; reference: string; observation: string;
+}
+export interface WorkflowRun {
+  id: string; template_id: WorkflowTemplate; version: 1; scope: string; reason: string; steps: WorkflowStep[];
+  observed_state: string; can_advance: boolean; can_cancel: boolean;
+}
 export interface IncidentResponsePage {
+  workflow_runs?: WorkflowRun[];
   responses: IncidentResponseRecord[]; observed_revision: number; activity_pending: boolean; mode: 'manual_tracking_only' | 'governed_response_tracking';
 }
 
