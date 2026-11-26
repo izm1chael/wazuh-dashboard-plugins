@@ -1,3 +1,4 @@
+import { OBSERVATION_DECISIONS } from '../../common/incidents/behaviour-observation-contract';
 import { BEHAVIOUR_FIELDS } from '../../common/incidents/behaviour-contract';
 import { PLAYBOOKS as AUTOMATION_PLAYBOOKS, STATUSES as AUTOMATION_STATUSES } from '../../common/incidents/automation-contract';
 import { INDICATOR_TYPES, INDICATOR_TLP } from '../../common/incidents/indicator-contract';
@@ -127,6 +128,18 @@ export function registerIncidentRoutes(router: IRouter) {
     expected_revision: catalogRevision, id: idSchema, sighting_revision: revisionSchema, reason: schema.string({ minLength: 1, maxLength: 1024 }),
   }) } }, async (context, request, response) => respond(response, () => client(context).withdrawIndicatorSighting(
     request.body.expected_revision, request.body.id, request.body.sighting_revision, request.body.reason)));
+
+  router.post({ path: '/indexer/incident-behaviour/observations/day', validate: { body: schema.object({
+    day: schema.string({ minLength: 20, maxLength: 20 }),
+  }) } }, async (context, request, response) => respond(response, () => client(context).observationDay(request.body.day)));
+  router.post({ path: '/indexer/incident-behaviour/observations/review', validate: { body: schema.object({
+    id: idSchema, expected_revision: revisionSchema,
+    decision: schema.oneOf(OBSERVATION_DECISIONS.map(value => schema.literal(value))),
+    reason: schema.string({ minLength: 1, maxLength: 1024 }),
+  }) } }, async (context, request, response) => respond(response, () => client(context).reviewObservation(request.body)));
+  router.post({ path: '/indexer/incident-behaviour/observations/promote', validate: { body: schema.object({
+    id: idSchema, expected_revision: revisionSchema,
+  }) } }, async (context, request, response) => respond(response, () => client(context).promoteObservation(request.body)));
 
   router.post({
     path: '/indexer/incident-behaviour/rule-assess',
