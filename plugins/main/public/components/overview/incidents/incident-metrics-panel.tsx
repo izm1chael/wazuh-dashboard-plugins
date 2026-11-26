@@ -8,6 +8,7 @@ import { validateMetricsQuery } from '../../../../common/incidents/metrics-valid
 const request = (query: IncidentMetricsQuery) => getHttp().post<IncidentMetricsReport>('/indexer/incident-metrics/report', { body: JSON.stringify(query) });
 const display = (seconds: number | null) => seconds === null ? 'Not available' : (seconds / 60).toFixed(2) + ' min';
 const label = (value: string) => value.replace(/_/g, ' ');
+const percentage = (part: number, total: number) => total > 0 ? (part / total * 100).toFixed(1) + '%' : 'Not available';
 
 function Metric({ title, value }: { title: string; value: DurationMetric }) {
   return <EuiPanel hasShadow={false} hasBorder paddingSize='m'>
@@ -82,7 +83,8 @@ export function IncidentMetricsPanel({ back, report = request }: {
         <EuiFlexItem><Metric title='Creation to first closure' value={result.creation_to_first_close} /></EuiFlexItem>
       </EuiFlexGroup>
       <EuiText size='s'><p>MTTI unavailable: trusted originating detection and identification timestamps are not captured.</p>
-        <p>Reopened incidents: {result.reopened_incidents}. Cohort pending audit: {result.cohort_pending_audit}. Invalid creation timestamps among scanned records: {result.invalid_created_records}.</p></EuiText>
+        <p>Reopened incidents: {result.reopened_incidents} ({percentage(result.reopened_incidents, result.cohort_count)} of the creation cohort). Cohort pending audit: {result.cohort_pending_audit}. Invalid creation timestamps among scanned records: {result.invalid_created_records}.</p>
+        <p>False-positive share: {percentage(result.classifications.false_positive, result.cohort_statuses.closed - result.unknown_classification)} of closed incidents with a recorded classification (including undetermined). This is not a detection-level false-positive rate.</p></EuiText>
       <EuiFlexGroup wrap>
         <EuiFlexItem><Counts title='Current cohort status' values={result.cohort_statuses} /></EuiFlexItem>
         <EuiFlexItem><Counts title='Current closed cohort classification' values={{ ...result.classifications, unknown: result.unknown_classification }} /></EuiFlexItem>
