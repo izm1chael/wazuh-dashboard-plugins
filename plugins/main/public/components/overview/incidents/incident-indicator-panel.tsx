@@ -35,6 +35,11 @@ export function IncidentIndicatorPanel({ back }: { back: () => void }) {
   const [exported, setExported] = useState('');
   const [selected, setSelected] = useState('');
   const [reason, setReason] = useState('');
+  const [sightingAt, setSightingAt] = useState('');
+  const [sightingSource, setSightingSource] = useState('');
+  const [sightingCount, setSightingCount] = useState('');
+  const [withdrawRevision, setWithdrawRevision] = useState<number>();
+  const [withdrawReason, setWithdrawReason] = useState('');
   const [hunt, setHunt] = useState<{ id: string; field: HuntField; value?: string; values?: string[]; from: string; until: string }>();
   const [batchType, setBatchType] = useState<IndicatorType>('ipv4');
   const generation = useRef(0);
@@ -47,7 +52,7 @@ export function IncidentIndicatorPanel({ back }: { back: () => void }) {
     return validateCatalog(await getHttp().post<IndicatorCatalog>(ROOT + 'read', { body: '{}' }));
   }
   function clearDerived() {
-    setPreview(undefined); setExported(''); setHunt(undefined); setSelected(''); setReason('');
+    setPreview(undefined); setExported(''); setHunt(undefined); setSelected(''); setReason(''); setSightingAt(''); setSightingSource(''); setSightingCount(''); setWithdrawRevision(undefined); setWithdrawReason('');
   }
   async function reload() {
     if (running.current) return;
@@ -63,7 +68,7 @@ export function IncidentIndicatorPanel({ back }: { back: () => void }) {
       if (run === generation.current) setBusy(false);
     }
   }
-  async function mutate(operation: 'add' | 'revoke', payload: object, changed: number) {
+  async function mutate(operation: 'add' | 'revoke' | 'record-sighting' | 'withdraw-sighting', payload: object, changed: number) {
     if (!catalog || running.current) return;
     const expected = catalog.revision, run = ++generation.current;
     running.current = true; setBusy(true); setError(''); setNotice(''); setCatalog(undefined); clearDerived();
@@ -103,7 +108,7 @@ export function IncidentIndicatorPanel({ back }: { back: () => void }) {
     { field: 'confidence', name: 'Confidence' }, { field: 'tlp', name: 'TLP' }, { field: 'source', name: 'Source' },
     { field: 'valid_until', name: 'Valid until (UTC)' },
     { name: 'Details', render: (row: Indicator) => <EuiButtonEmpty disabled={locked} onClick={() => {
-      setSelected(row.id); setReason(''); setHunt(undefined); setExported('');
+      setSelected(row.id); setReason(''); setHunt(undefined); setExported(''); setSightingAt(''); setSightingSource(''); setSightingCount(''); setWithdrawRevision(undefined); setWithdrawReason('');
     }}>Inspect indicator</EuiButtonEmpty> },
   ];
   const batchRows = rows.filter(row => row.type === batchType && row.state === 'active');
@@ -164,6 +169,27 @@ export function IncidentIndicatorPanel({ back }: { back: () => void }) {
         {chosen.state === 'active' && chosen.tlp === 'TLP:CLEAR' && <EuiButtonEmpty disabled={locked} onClick={() => void prepareExport(chosen)}>Prepare local STIX export (CLEAR only)</EuiButtonEmpty>}
         {exported && <><EuiFormRow label='Local STIX bundle' helpText='Unmarked STIX subset, no original provenance or source metadata. Review before any external sharing.'>
           <EuiTextArea value={exported} readOnly rows={10} /></EuiFormRow><EuiButtonEmpty onClick={() => setExported('')}>Clear export</EuiButtonEmpty></>}
+        <EuiSpacer size='m' />
+        <EuiTitle size='s'><h3>External sighting attestations</h3></EuiTitle>
+        <EuiText size='s'>Analyst-entered external reports only. These are not independently verified findings, and must not contain restricted telemetry or raw evidence. Up to 10 lifetime attestations per indicator, 500 across the catalog.</EuiText>
+        {chosen.sightings.map(sight => <React.Fragment key={sight.revision}>
+          <EuiText size='s'>Observed {sight.observed_at} · {sight.count} reported observation(s) · {sight.source} · recorded by {sight.recorded_by} at {sight.recorded_at} (revision {sight.revision})</EuiText>
+          {sight.withdrawn_at ? <EuiText size='s'>Withdrawn by {sight.withdrawn_by} at {sight.withdrawn_at}: {sight.withdrawal_reason}</EuiText> :
+            <EuiButtonEmpty disabled={locked} onClick={() => { setWithdrawRevision(sight.revision); setWithdrawReason(''); }}>Prepare withdrawal</EuiButtonEmpty>}
+        </React.Fragment>)}
+        {withdrawRevision !== undefined && <>
+          <EuiFormRow label={'Withdrawal reason for sighting revision ' + withdrawRevision}><EuiFieldText value={withdrawReason} maxLength={1024} disabled={locked} onChange={e => setWithdrawReason(e.target.value)} /></EuiFormRow>
+          <EuiButton color='danger' disabled={locked || !withdrawReason.trim()} onClick={() => void mutate('withdraw-sighting',
+            { id: chosen.id, sighting_revision: withdrawRevision, reason: withdrawReason.trim() }, 1)}>Confirm sighting withdrawal</EuiButton>
+          <EuiButtonEmpty onClick={() => setWithdrawRevision(undefined)}>Cancel withdrawal</EuiButtonEmpty>
+        </>}
+        <EuiFormRow label='Externally reported observation timestamp (UTC)'><EuiFieldText value={sightingAt} maxLength={24} disabled={locked} onChange={e => setSightingAt(e.target.value)} /></EuiFormRow>
+        <EuiFormRow label='External sighting source label'><EuiFieldText value={sightingSource} maxLength={256} disabled={locked} onChange={e => setSightingSource(e.target.value)} /></EuiFormRow>
+        <EuiFormRow label='Externally reported observation count'><EuiFieldText value={sightingCount} maxLength={7} disabled={locked} onChange={e => setSightingCount(e.target.value)} /></EuiFormRow>
+        <EuiButton disabled={locked || chosen.sightings.length >= 10 || catalog.indicators.reduce((n, row) => n + row.sightings.length, 0) >= 500 ||
+            !sightingAt || !sightingSource.trim() || !/^[1-9][0-9]{0,6}$/.test(sightingCount) || Number(sightingCount) > 1000000}
+          onClick={() => void mutate('record-sighting', { id: chosen.id, observed_at: sightingAt, source: sightingSource.trim(), count: Number(sightingCount) }, 1)}>Record external sighting attestation</EuiButton>
+        <EuiSpacer size='m' />
         {chosen.state !== 'revoked' && <>
           <EuiFormRow label='Revocation reason'><EuiFieldText value={reason} maxLength={1024} disabled={locked} onChange={e => setReason(e.target.value)} /></EuiFormRow>
           <EuiButton color='danger' disabled={locked || !reason.trim()} onClick={() => void mutate('revoke', { id: chosen.id, reason: reason.trim() }, 1)}>Revoke indicator permanently</EuiButton>
