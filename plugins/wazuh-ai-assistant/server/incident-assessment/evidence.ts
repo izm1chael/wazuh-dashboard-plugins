@@ -9,7 +9,7 @@ export const ACTIONS = ['review_detection', 'review_entities', 'review_attack_te
   'retrieve_missing_evidence', 'assess_business_impact', 'review_containment_options', 'review_classification'] as const;
 export type Action = typeof ACTIONS[number];
 export interface Fact { ref: string; kind: string; value: string | number | boolean | string[] }
-export interface AssessmentDigest { facts: Fact[]; scope: 'first_finding_page'; complete_link_coverage: boolean }
+export interface AssessmentDigest { facts: Fact[]; scope: 'first_finding_page' | 'expanded_linked_findings'; complete_link_coverage: boolean }
 type Obj = Record<string, unknown>;
 const object = (value: unknown): Obj => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid incident evidence');
@@ -35,16 +35,17 @@ export function checkedSummary(raw: unknown, id: string, revision: number, allow
   return summary;
 }
 
-export function buildDigest(summary: Obj, rawPage: unknown): AssessmentDigest {
+export function buildDigest(summary: Obj, rawPage: unknown, offset = 0): AssessmentDigest {
   const page = object(rawPage);
   const total = count(summary.finding_count, 1000);
   const refs = array(page.findings, PAGE_SIZE).map(object);
   const observations = array(page.observations, PAGE_SIZE).map(object);
   const unavailable = count(page.unavailable_count, PAGE_SIZE);
-  const sampled = Math.min(total, PAGE_SIZE);
+  const sampled = Math.min(total - offset, PAGE_SIZE);
+  if (offset < 0 || offset > total) throw new Error('Invalid finding offset');
   if (page.revision !== summary.revision || refs.length !== observations.length ||
       refs.length + unavailable !== sampled ||
-      (total > PAGE_SIZE ? page.next_offset !== PAGE_SIZE : page.next_offset !== undefined)) {
+      (total > offset + PAGE_SIZE ? page.next_offset !== offset + PAGE_SIZE : page.next_offset !== undefined)) {
     throw new Error('Incomplete or stale finding page');
   }
   const seen = new Set<string>();
@@ -70,10 +71,11 @@ export function buildDigest(summary: Obj, rawPage: unknown): AssessmentDigest {
     const tactics = array(row.tactics, 48).filter((v): v is string => typeof v === 'string' && /^TA[0-9]{4}$/.test(v));
     const kinds = array(row.entities, 240).map(object).map(entity => entity.kind)
       .filter((v): v is string => typeof v === 'string' && ENTITY_KINDS.includes(v));
-    add('sample_' + (n + 1) + '_techniques', [...new Set(techniques)].sort().slice(0, 12));
-    add('sample_' + (n + 1) + '_tactics', [...new Set(tactics)].sort().slice(0, 12));
-    add('sample_' + (n + 1) + '_entity_kinds', [...new Set(kinds)].sort());
-    add('sample_' + (n + 1) + '_timestamp_present', typeof row.timestamp === 'string' && Number.isFinite(Date.parse(row.timestamp)));
+    add('sample_' + (offset + n + 1) + '_exact_rule_present', typeof row.wazuh_rule_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(row.wazuh_rule_id));
+    add('sample_' + (offset + n + 1) + '_techniques', [...new Set(techniques)].sort().slice(0, 12));
+    add('sample_' + (offset + n + 1) + '_tactics', [...new Set(tactics)].sort().slice(0, 12));
+    add('sample_' + (offset + n + 1) + '_entity_kinds', [...new Set(kinds)].sort());
+    add('sample_' + (offset + n + 1) + '_timestamp_present', typeof row.timestamp === 'string' && Number.isFinite(Date.parse(row.timestamp)));
   }
   const digest: AssessmentDigest = { facts, scope: 'first_finding_page', complete_link_coverage: total === refs.length };
   if (JSON.stringify(digest).length > 6000) throw new Error('Incident evidence exceeds provider budget');

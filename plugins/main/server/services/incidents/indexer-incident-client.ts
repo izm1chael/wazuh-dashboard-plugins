@@ -329,8 +329,9 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
 
 function validObservation(value: FindingObservation): boolean {
   const nullableText = (text: unknown) => text === null || (typeof text === 'string' && text.length <= 1024);
-  return !!value && Object.keys(value).every(key => ['index', 'document_id', 'timestamp', 'rule_id', 'rule_title', 'entities', 'techniques', 'tactics'].includes(key)) &&
+  return !!value && Object.keys(value).every(key => ['index', 'document_id', 'timestamp', 'rule_id', 'rule_title', 'wazuh_rule_id', 'entities', 'techniques', 'tactics'].includes(key)) &&
     nullableText(value.timestamp) && nullableText(value.rule_id) && nullableText(value.rule_title) &&
+    (value.wazuh_rule_id === undefined || nullableText(value.wazuh_rule_id)) &&
     Array.isArray(value.entities) && value.entities.length <= 240 &&
     value.entities.every(entity => !!entity && Object.keys(entity).every(key => ['kind', 'value', 'field'].includes(key)) &&
       typeof entity.kind === 'string' && entity.kind.length <= 64 && typeof entity.field === 'string' && entity.field.length <= 128 &&

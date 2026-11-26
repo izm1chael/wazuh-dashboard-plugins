@@ -71,7 +71,7 @@ export interface IndexerIncidentResult {
 export interface FindingReference { index: string; document_id: string }
 export interface FindingEntity { kind: string; value: string; field: string }
 export interface FindingObservation extends FindingReference {
-  timestamp: string | null; rule_id: string | null; rule_title: string | null;
+  timestamp: string | null; rule_id: string | null; rule_title: string | null; wazuh_rule_id?: string | null;
   entities: FindingEntity[]; techniques: string[]; tactics: string[];
 }
 export interface FindingPage {

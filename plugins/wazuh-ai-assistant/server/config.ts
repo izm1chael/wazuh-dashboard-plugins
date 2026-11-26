@@ -5,6 +5,7 @@ export const configSchema = schema.object({
   enabled: schema.boolean({ defaultValue: true }),
   // Server-only explicit destination and disclosure allowlist. Absent means no assessment route.
   incidentAssessment: schema.maybe(schema.object({
+    agenticEnabled: schema.boolean({ defaultValue: false }),
     providerId: schema.string({ minLength: 1, maxLength: 128 }),
     baseUrl: schema.string({ minLength: 1, maxLength: 2048 }),
     model: schema.string({ minLength: 1, maxLength: 256 }),
