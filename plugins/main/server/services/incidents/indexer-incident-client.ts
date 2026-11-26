@@ -1,6 +1,7 @@
-import type { CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import type { IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 import { validateCorrelationPolicy, validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
+import { validateMetricsQuery, validateMetricsReport } from '../../../common/incidents/metrics-validation';
 import { validateIncidentId } from './incident-id';
 
 /** Production routes must bind this transport to asCurrentUser, never an internal
@@ -57,6 +58,17 @@ function commandBody(command: IndexerIncidentCommand): object {
  */
 export class IndexerIncidentClient {
   constructor(private readonly transport: CurrentUserIncidentTransport) {}
+
+  async metrics(input: IncidentMetricsQuery): Promise<IncidentMetricsReport> {
+    validateMetricsQuery(input);
+    const { body } = await this.transport.request<IncidentMetricsReport>({
+      method: 'POST', path: '/_plugins/_setup/incident-metrics/report',
+      body: { from: input.from, until: input.until, triage_target_seconds: input.triage_target_seconds,
+        resolution_target_seconds: input.resolution_target_seconds },
+    });
+    validateMetricsReport(body, input);
+    return body;
+  }
 
   async list(query: QueueQuery = {}): Promise<QueuePage> {
     const limit = query.limit ?? 50;

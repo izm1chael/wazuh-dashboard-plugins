@@ -62,3 +62,7 @@ The workspace now links to a read-only preview form, with a dedicated current-us
 ## Saved correlation policies
 
 The correlation screen can explicitly save or load an immutable policy UUID/version under separate policy read/save permissions. Identical saves replay; changed definitions require a new version. Time ranges are supplied only for preview, not stored in the policy. All saved policies remain preview-only; no active version pointer or automatic execution is implemented. The preview itself remains read-only. No finding source or preview result is stored with a policy.
+
+## SOC operational reporting
+
+The incident queue links to a dedicated metrics report. The report is read-only, permission-gated and explicitly separates current-state creation cohorts from the entire current open backlog. MTTT is triage to active; MTTR is creation to current closure for currently closed cohort members; first assignment and first closure are separate metrics. Missing/invalid samples are counted, not converted to zero. Configurable strict SLA limits default to 600 and 1200 seconds; mean, nearest-rank P50/P95 and completed-sample compliance are displayed. Workloads, severity, age buckets and closure classifications are counted. MTTI and detection compression are not claimed without trusted detection and identification evidence. The current bounded search fails at more than 5,000 union records; scalable aggregation and true historical as-of reporting remain outstanding. No automatic refresh or raw index grant.

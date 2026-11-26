@@ -123,3 +123,24 @@ export interface SavedCorrelationPolicy extends CorrelationPolicyDefinition {
   mode: 'preview_only'; created_by: string; created_at: string;
 }
 export interface SavedCorrelationPolicyResult { policy: SavedCorrelationPolicy; replayed?: boolean }
+
+export interface IncidentMetricsQuery { from: string; until: string; triage_target_seconds: number; resolution_target_seconds: number }
+export interface DurationMetric {
+  samples: number; missing: number; invalid: number;
+  mean_seconds: number | null; p50_seconds: number | null; p95_seconds: number | null;
+  target_seconds?: number; met?: number; breached?: number;
+}
+export interface IncidentMetricsReport {
+  scope: 'current_state_creation_cohort_and_open_backlog';
+  from: string; until: string; observed_at: string; scanned: number;
+  cohort_count: number; cohort_statuses: Record<Status, number>; reopened_incidents: number;
+  cohort_pending_audit: number; invalid_created_records: number;
+  classifications: Record<Classification, number>; unknown_classification: number;
+  open_backlog: number; unassigned: number; backlog_severities: Record<Severity, number>; unknown_severity: number;
+  backlog_age_buckets: Record<'lt_1h' | '1h_to_24h' | '1d_to_7d' | 'gte_7d' | 'unknown', number>;
+  owner_workload: Array<{ owner: string; open: number }>;
+  open_resolution_breached: number; open_resolution_unknown: number;
+  open_triage_breached: number; open_triage_unknown: number;
+  creation_to_first_assignment: DurationMetric; mttt: DurationMetric; mttr: DurationMetric;
+  creation_to_first_close: DurationMetric; mtti_available: false;
+}

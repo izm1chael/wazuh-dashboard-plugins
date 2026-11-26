@@ -52,6 +52,16 @@ async function respond<T extends object>(
 
 export function registerIncidentRoutes(router: IRouter) {
   router.post({
+    path: '/indexer/incident-metrics/report',
+    validate: { body: schema.object({
+      from: schema.string({ minLength: 20, maxLength: 30 }),
+      until: schema.string({ minLength: 20, maxLength: 30 }),
+      triage_target_seconds: schema.number({ min: 1, max: 86400 }),
+      resolution_target_seconds: schema.number({ min: 1, max: 604800 }),
+    }) },
+  }, async (context, request, response) => respond(response, () => client(context).metrics(request.body)));
+
+  router.post({
     path: '/indexer/incident-correlation/policies/save',
     validate: { body: schema.object({
       policy_id: idSchema, policy_version: revisionSchema,
