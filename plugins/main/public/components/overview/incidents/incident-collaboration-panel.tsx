@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { EuiBasicTable, EuiBasicTableColumn, EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import type { CollaborationPage, IncidentSummary, IncidentTask, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
+import { IncidentRegisterPanel } from './incident-register-panel';
 import { IncidentPlaybooksPanel } from './incident-playbooks-panel';
 
 export function IncidentCollaborationPanel({ api, incident, disabled, command }: {
@@ -50,6 +51,7 @@ export function IncidentCollaborationPanel({ api, incident, disabled, command }:
       <EuiButton type='submit' disabled={tasksBlocked || !title.trim() || tasks.length >= 100}>Create task</EuiButton>
     </form>
     <EuiSpacer size='l' />
+    {page && !stale && <IncidentRegisterPanel page={page} incident={incident} disabled={tasksBlocked} command={command} />}
     <EuiTitle size='s'><h2>Analyst notes</h2></EuiTitle>
     <EuiSpacer size='s' />
     <EuiText size='s'>Notes are append-only and visible to authorized incident readers. Do not include restricted finding data or secrets.</EuiText>
