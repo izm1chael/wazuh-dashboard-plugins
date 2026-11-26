@@ -19,3 +19,7 @@ Pure Java TuningReplay and TypeScript tuning evaluator: 305 deterministic paired
 ## Completion criteria
 
 Return a single consolidated receipt with exact SHAs, build commands/results, unit/integration counts, failures and fixes, live access matrix, replay provenance, provider disclosure checks, and any remaining blockers. Keep both PRs draft until independently reviewed and local qualification passes. Do not substitute mock checks for actual stack verification.
+
+## Handover and investigation follow-on gate
+
+Include the later handover and investigation commits in both checkout SHAs. Execute the five additional disposable checks in ../incident-handover-investigation.md. Verify additive mapping upgrade, exact authenticated recipient acceptance and personal queue scope, bounded live timeline coverage and rejection of partial/stale responses. Record full build and role evidence; no qualification by mock results alone.
