@@ -18,3 +18,21 @@ describe('response projection', () => {
     expect(() => validateResponsePage({ ...page, responses: [{ ...row, state: 'reported_completed' }] }, id)).toThrow();
   });
 });
+
+describe('governed scan projection', () => {
+  const scan: IncidentResponseRecord = { ...row, type: 'scan_vulnerability', scope: id + ':agent:001',
+    state: 'dispatch_reserved', decided_by: 'reviewer', decided_at: now, decision_reason: 'Approved',
+    finalized_by: 'runner', finalized_at: now, final_reason: 'Dispatch reserved' };
+  const governed: IncidentResponsePage = { ...page, mode: 'governed_response_tracking', observed_revision: 4, responses: [scan] };
+  test('accepts reservation and unverified manager acknowledgement or ambiguous outcome', () => {
+    for (const state of ['dispatch_reserved', 'manager_accepted', 'dispatch_unknown'] as const)
+      expect(() => validateResponsePage({ ...governed, responses: [{ ...scan, state }] }, id)).not.toThrow();
+  });
+  test('rejects unsafe scope, self dispatch, manual-only scan and verified execution', () => {
+    for (const patch of [{ scope: id + ':agent:000' }, { scope: id + ':agent:001,002' },
+      { finalized_by: 'analyst' }, { finalized_by: 'reviewer' }, { execution_verified: true },
+      { type: 'review_containment' }, { finalized_at: null }])
+      expect(() => validateResponsePage({ ...governed, responses: [{ ...scan, ...patch } as IncidentResponseRecord] }, id)).toThrow();
+    expect(() => validateResponsePage({ ...governed, mode: 'manual_tracking_only' }, id)).toThrow();
+  });
+});
