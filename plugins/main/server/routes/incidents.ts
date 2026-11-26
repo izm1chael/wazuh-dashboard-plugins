@@ -211,11 +211,11 @@ export function registerIncidentRoutes(router: IRouter) {
 
   router.post({ path: ROOT + '/{id}/offer-handover', validate: { params, query, body: schema.object({
     target: schema.string({ minLength: 1, maxLength: 1024 }), reason: reasonSchema,
-  }) } }, (context, request, response) => handle(response, () =>
+  }) } }, async (context, request, response) => respond(response, () =>
     client(context).command(request.params.id, request.query.expected_revision, { kind: 'offer-handover', ...request.body })));
   for (const kind of ['accept-handover', 'cancel-handover'] as const) {
     router.post({ path: ROOT + '/{id}/' + kind, validate: { params, query, body: schema.object({ reason: reasonSchema }) } },
-      (context, request, response) => handle(response, () =>
+      async (context, request, response) => respond(response, () =>
         client(context).command(request.params.id, request.query.expected_revision, { kind, ...request.body })));
   }
   router.post({ path: ROOT + '/{id}/edit', validate: { params, query, body: schema.object({
