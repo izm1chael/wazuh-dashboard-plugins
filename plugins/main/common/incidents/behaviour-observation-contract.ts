@@ -80,3 +80,36 @@ export function validatePromotionResult(row:BehaviourObservation,input:Observati
   if(row.id!==input.id||row.revision!==3||row.state!=='promoted')return fail();
   return row;
 }
+
+export interface EntityObservationPriority {
+  key:string; publisher:string; field:RuleBehaviourInput['field']; value:string;
+  observed_rules:number; elevated_rules:number; newly_observed_rules:number;
+  awaiting_review:number; awaiting_promotion:number; observation_ids:string[];
+}
+/** Exact same publisher + field + literal only. No cross-field identity inference, finding sums or risk probability. */
+export function entityObservationPriorities(page:ObservationPage):EntityObservationPriority[] {
+  validateObservationPage(page,page.day);
+  const groups=new Map<string,{row:EntityObservationPriority;rules:Set<string>}>();
+  for(const observation of page.rows){
+    const {field,value,rule_uuid}=observation.query;
+    const key=JSON.stringify([observation.actor,field,value]);
+    let group=groups.get(key);
+    if(!group){
+      group={row:{key,publisher:observation.actor,field,value,observed_rules:0,elevated_rules:0,newly_observed_rules:0,
+        awaiting_review:0,awaiting_promotion:0,observation_ids:[]},rules:new Set<string>()};
+      groups.set(key,group);
+    }
+    if(group.rules.has(rule_uuid))return fail();
+    group.rules.add(rule_uuid);
+    const row=group.row;
+    row.observed_rules++;
+    if(observation.assessment.classification==='elevated_rule_volume')row.elevated_rules++;
+    if(observation.assessment.classification==='newly_observed')row.newly_observed_rules++;
+    if(observation.state==='unreviewed')row.awaiting_review++;
+    if(observation.state==='escalation_requested')row.awaiting_promotion++;
+    row.observation_ids.push(observation.id);
+  }
+  return Array.from(groups.values(),g=>g.row).sort((a,b)=>b.awaiting_review-a.awaiting_review||
+    b.awaiting_promotion-a.awaiting_promotion||b.elevated_rules-a.elevated_rules||
+    b.newly_observed_rules-a.newly_observed_rules||(a.key<b.key?-1:a.key>b.key?1:0));
+}
