@@ -9,6 +9,8 @@ const LABELS: Record<string, string> = {
   handover_offered: 'Handover offered', handover_accepted: 'Handover accepted', handover_cancelled: 'Handover cancelled or declined',
   created: 'Incident created', assign: 'Assignment changed', start_triage: 'Triage started',
   activate: 'Investigation started', close: 'Incident closed', reopen: 'Incident reopened',
+  workflow_started: 'Executable playbook started', workflow_advanced: 'Playbook checkpoint advanced',
+  workflow_completed: 'Playbook completed (attested)', workflow_failed: 'Playbook failed', workflow_cancelled: 'Playbook cancelled',
   soar_dispatch_reserved: 'SOAR scan dispatch reserved', soar_dispatch_reported: 'SOAR manager outcome reported',
   response_requested: 'Response requested', response_approved: 'Response approved', response_rejected: 'Response rejected',
   response_cancelled: 'Response cancelled', response_outcome_reported: 'Manual response outcome reported',
