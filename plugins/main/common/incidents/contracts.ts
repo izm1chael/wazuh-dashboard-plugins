@@ -176,9 +176,9 @@ export interface IncidentMetricsReport {
   creation_to_first_close: DurationMetric; mtti_available: false;
 }
 
-export type ResponseIntent = 'investigate_endpoint' | 'review_containment' | 'review_indicator_block' | 'collect_evidence';
+export type ResponseIntent = 'investigate_endpoint' | 'review_containment' | 'review_indicator_block' | 'collect_evidence' | 'scan_vulnerability';
 export type ManualResponseOutcome = 'completed' | 'failed' | 'not_performed';
-export type ResponseState = 'requested' | 'approved' | 'rejected' | 'cancelled' | 'reported_completed' | 'reported_failed' | 'reported_not_performed';
+export type ResponseState = 'requested' | 'approved' | 'rejected' | 'cancelled' | 'reported_completed' | 'reported_failed' | 'reported_not_performed' | 'dispatch_reserved' | 'manager_accepted' | 'dispatch_unknown';
 export interface IncidentResponseRecord {
   id: string; type: ResponseIntent; scope: string; reason: string; state: ResponseState;
   requested_by: string; requested_at: string;
