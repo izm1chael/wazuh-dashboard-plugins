@@ -23,6 +23,7 @@ export interface IncidentSummary {
   priority: Priority;
   tlp: Tlp;
   owner: string | null;
+  tags?: string[];
   handover?: { target: string; offered_by: string; offered_at: string } | null;
   created_by: string;
   updated_by: string;
@@ -47,6 +48,11 @@ export type IndexerIncidentCommand =
   | { kind: 'close'; classification: Classification; reason: string }
   | { kind: 'reopen'; reason: string }
   | { kind: 'attach-finding' | 'detach-finding'; index: string; document_id: string }
+  | { kind: 'set-tags'; tags: string[] }
+  | { kind: 'add-relation'; target_id: string; type: IncidentRelationType; reason: string }
+  | { kind: 'remove-relation'; relation_id: string; reason: string }
+  | { kind: 'register-evidence'; type: EvidenceArtifactType; label: string; sha256: string; custody_reference: string }
+  | { kind: 'withdraw-evidence'; evidence_id: string; reason: string }
   | { kind: 'add-note'; body: string }
   | { kind: 'create-task'; title: string }
   | { kind: 'complete-task' | 'reopen-task'; task_id: string }
@@ -111,7 +117,20 @@ export interface IncidentTask {
   id: string; title: string; status: 'open' | 'completed'; created_by: string; created_at: string;
   completed_by: string | null; completed_at: string | null;
 }
+export const RELATION_TYPES = ['related', 'possible_duplicate', 'possible_same_campaign'] as const;
+export type IncidentRelationType = typeof RELATION_TYPES[number];
+export const EVIDENCE_TYPES = ['log_export', 'disk_image', 'memory_image', 'network_capture', 'screenshot', 'other'] as const;
+export type EvidenceArtifactType = typeof EVIDENCE_TYPES[number];
+export interface IncidentRelation {
+  id: string; target_id: string; type: IncidentRelationType; reason: string; recorded_by: string; recorded_at: string;
+}
+export interface EvidenceArtifact {
+  id: string; type: EvidenceArtifactType; label: string; sha256: string; custody_reference: string;
+  recorded_by: string; recorded_at: string; origin: 'analyst_attested_external_artifact';
+  state: 'recorded' | 'withdrawn'; withdrawn_by: string | null; withdrawn_at: string | null; withdrawal_reason: string | null;
+}
 export interface CollaborationPage {
+  incident_relations?: IncidentRelation[]; evidence_register?: EvidenceArtifact[];
   playbooks?: PlaybookPreview[]; playbook_runs?: PlaybookRun[]; tuning_proposals?: TuningProposal[];
   notes: IncidentNote[]; tasks: IncidentTask[]; observed_revision: number; activity_pending: boolean; next_before?: number;
 }
