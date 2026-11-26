@@ -27,7 +27,7 @@ export const safeText = (value: unknown, max: number): value is string =>
   typeof value === 'string' && !!value.trim() && value === value.trim() && value.length <= max && !/[\x00-\x1f\x7f-\x9f]/.test(value);
 const exact = (obj: object, keys: string[]) => Object.keys(obj).length === keys.length && keys.every(k => Object.prototype.hasOwnProperty.call(obj, k));
 export function timestamp(value: unknown): number {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/.test(value)) return fail();
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) return fail();
   const at = Date.parse(value);
   if (!Number.isFinite(at) || new Date(at).toISOString().slice(0, 19) !== value.slice(0, 19) ||
       at < Date.UTC(2000, 0, 1) || at > Date.UTC(2100, 0, 1)) return fail();
