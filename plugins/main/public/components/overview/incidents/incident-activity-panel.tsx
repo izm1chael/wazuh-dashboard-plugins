@@ -14,6 +14,7 @@ const LABELS: Record<string, string> = {
   tuning_proposed: 'Detection tuning proposal recorded', tuning_accepted_for_review: 'Tuning accepted for human review',
   tuning_rejected: 'Tuning proposal rejected', tuning_withdrawn: 'Tuning proposal withdrawn',
   ai_feedback_recorded: 'Analyst AI assessment feedback recorded',
+  automation_applied: 'Automation rule applied',
   playbook_applied: 'Investigation playbook applied',
   note_added: 'Note added', task_created: 'Task created', task_completed: 'Task completed', task_reopened: 'Task reopened',
   edit: 'Metadata changed', attach_finding: 'Finding attached', detach_finding: 'Finding detached',
@@ -39,7 +40,7 @@ export function IncidentActivityPanel({ api, id }: { api: IncidentApi; id: strin
     { field: 'at', name: 'Time (UTC)' },
     { field: 'revision', name: 'Revision' },
     { field: 'kind', name: 'Activity', render: (kind: string) => LABELS[kind] || kind },
-    { field: 'actor', name: 'Analyst' },
+    { field: 'actor', name: 'Actor' },
     { name: 'Changes', render: (event: IncidentActivity) => <EuiText size='s'>
       {Object.entries(event.changes).map(([field, change]) => <div key={field}>{field.replace(/_/g, ' ')}: {display(change.before)} → {display(change.after)}</div>)}
     </EuiText> },
