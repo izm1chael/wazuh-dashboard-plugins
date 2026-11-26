@@ -56,6 +56,7 @@ export function IncidentQueue({ api, open, create }: {
     { field: 'status', name: 'Status' },
     { field: 'owner', name: 'Owner', render: (value: string | null) => value || 'Unassigned' },
     { name: 'Handover', render: (item: IncidentSummary) => item.handover?.target || '—' },
+    { name: 'Tags', render: (item: IncidentSummary) => (item.tags ?? []).join(', ') || '—' },
     { field: 'finding_count', name: 'Findings' },
     { field: 'updated_at', name: 'Updated (UTC)' },
   ];
@@ -73,7 +74,7 @@ export function IncidentQueue({ api, open, create }: {
         <EuiFlexItem><EuiFormRow label='Queue'><EuiSelect value={queue} options={QUEUES.map(value => ({ value, text: label(value) }))} onChange={e => setQueue(e.target.value as Queue)} /></EuiFormRow></EuiFlexItem>
         <EuiFlexItem><EuiFormRow label='Severity'><EuiSelect value={severity} options={[{ value: '', text: 'All severities' }, ...SEVERITIES.map(value => ({ value, text: label(value) }))]} onChange={e => setSeverity(e.target.value as Severity | '')} /></EuiFormRow></EuiFlexItem>
         <EuiFlexItem><EuiFormRow label='Owner'><EuiFieldText value={owner} maxLength={1024} onChange={e => setOwner(e.target.value)} /></EuiFormRow></EuiFlexItem>
-        <EuiFlexItem><EuiFormRow label='Search incidents'><EuiFieldText value={search} maxLength={1024} onChange={e => setSearch(e.target.value)} /></EuiFormRow></EuiFlexItem>
+        <EuiFlexItem><EuiFormRow label='Search incidents' helpText='Use tag:example for an exact tag match.'><EuiFieldText value={search} maxLength={1024} onChange={e => setSearch(e.target.value)} /></EuiFormRow></EuiFlexItem>
         <EuiFlexItem grow={false}><EuiButton type='submit'>Apply filters</EuiButton></EuiFlexItem>
       </EuiFlexGroup>
     </form>
