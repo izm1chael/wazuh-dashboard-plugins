@@ -1,4 +1,5 @@
-import { CreateIncident, Classification, Incident, Priority, Severity, Tlp } from './incident-domain';
+import type { CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 import { validateIncidentId } from './incident-id';
 
 /** Production routes must bind this transport to asCurrentUser, never an internal
@@ -10,32 +11,6 @@ export interface CurrentUserIncidentTransport {
     querystring?: Record<string, string | number>;
     body?: object;
   }): Promise<{ body: T }>;
-}
-
-export type IndexerIncidentCommand =
-  | { kind: 'assign-self' | 'unassign' | 'start-triage' | 'activate' }
-  | { kind: 'edit'; title?: string; description?: string; severity?: Severity; priority?: Priority; tlp?: Tlp }
-  | { kind: 'close'; classification: Classification; reason: string }
-  | { kind: 'reopen'; reason: string }
-  | { kind: 'attach-finding' | 'detach-finding'; index: string; document_id: string };
-
-export type IncidentSummary = Omit<Incident, 'pending_activity'> & { finding_count: number };
-export type Queue = 'open' | 'new' | 'triaging' | 'active' | 'closed' | 'unassigned' | 'all';
-export interface QueueCursor { time: number; id: string }
-export interface QueueQuery {
-  queue?: Queue;
-  severity?: Severity;
-  owner?: string;
-  search?: string;
-  limit?: number;
-  after?: QueueCursor;
-}
-export interface QueuePage { incidents: IncidentSummary[]; next?: QueueCursor }
-
-export interface IndexerIncidentResult {
-  incident: IncidentSummary;
-  activity_delivery: 'delivered' | 'pending';
-  replayed: boolean;
 }
 
 const ROOT = '/_plugins/_setup/incidents';

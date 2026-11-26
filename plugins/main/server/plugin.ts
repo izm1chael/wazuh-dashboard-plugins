@@ -739,11 +739,13 @@ export class WazuhPlugin implements Plugin<WazuhPluginSetup, WazuhPluginStart> {
     core.capabilities.registerProvider(() => ({
       wazuh: {
         showIndexRawEvents: true,
+        experimentalIncidents: true,
       },
     }));
 
     core.capabilities.registerSwitcher(() => ({
       wazuh: {
+        experimentalIncidents: config.experimentalIncidentsEnabled,
         showIndexRawEvents: !config.disabledSettings.includes(
           WAZUH_DISABLED_SETTING_INDEX_RAW_EVENTS,
         ),
