@@ -4,6 +4,8 @@ import type { ActivityPage, IncidentActivity } from '../../../../common/incident
 import type { IncidentApi } from './incident-api';
 
 const LABELS: Record<string, string> = {
+  tags_updated: 'Incident tags updated', incident_relation_added: 'Relationship assertion recorded', incident_relation_removed: 'Relationship assertion removed',
+  evidence_registered: 'External evidence attested', evidence_withdrawn: 'Evidence attestation withdrawn',
   handover_offered: 'Handover offered', handover_accepted: 'Handover accepted', handover_cancelled: 'Handover cancelled or declined',
   created: 'Incident created', assign: 'Assignment changed', start_triage: 'Triage started',
   activate: 'Investigation started', close: 'Incident closed', reopen: 'Incident reopened',
