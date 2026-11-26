@@ -27,7 +27,7 @@ describe('incident persistence', () => {
     expect(result.incidents[0]).not.toHaveProperty('pending_activity');
     expect(result.next).toEqual(cursor);
     expect(request).toHaveBeenCalledWith(expect.objectContaining({
-      path: '/wazuh-cases-v1/_search',
+      path: '/.wazuh-cases-v1/_search',
       querystring: { allow_partial_search_results: 'false' },
     }));
   });
@@ -43,7 +43,7 @@ describe('incident persistence', () => {
     const record = create();
     const result = await store.create(record);
     expect(request).toHaveBeenCalledWith(expect.objectContaining({
-      method: 'PUT', path: '/wazuh-cases-v1/_create/' + ID, body: record,
+      method: 'PUT', path: '/.wazuh-cases-v1/_create/' + ID, body: record,
     }));
     expect(result.seqNo).toBe(2);
   });
@@ -56,7 +56,7 @@ describe('incident persistence', () => {
     request.mockResolvedValueOnce(writeResult);
     await store.commit(previous, next);
     expect(request).toHaveBeenCalledWith(expect.objectContaining({
-      path: '/wazuh-cases-v1/_doc/' + ID,
+      path: '/.wazuh-cases-v1/_doc/' + ID,
       querystring: { if_seq_no: 1, if_primary_term: 1, refresh: 'wait_for' },
       body: next,
     }));
@@ -69,7 +69,7 @@ describe('incident persistence', () => {
     request.mockResolvedValue(writeResult);
     const previous = versioned();
     const result = await store.deliverPending(previous);
-    expect(request.mock.calls[0][0].path).toBe('/wazuh-case-activity-v1/_create/' + ID + '%3A1');
+    expect(request.mock.calls[0][0].path).toBe('/.wazuh-case-activity-v1/_create/' + ID + '%3A1');
     expect(request.mock.calls[1][0].body.pending_activity).toBeNull();
     expect(result.record.revision).toBe(1);
     expect(previous.record.pending_activity).not.toBeNull();

@@ -3,8 +3,8 @@ import { Activity, Incident, IncidentDomainError } from './incident-domain';
 import { buildIncidentQuery, IncidentPage, IncidentQuery } from './incident-query';
 import { validateIncidentId } from './incident-id';
 
-export const INCIDENT_INDEX = 'wazuh-cases-v1';
-export const ACTIVITY_INDEX = 'wazuh-case-activity-v1';
+export const INCIDENT_INDEX = '.wazuh-cases-v1';
+export const ACTIVITY_INDEX = '.wazuh-case-activity-v1';
 
 /**
  * Internal transport adapter only. Must be supplied by a trusted, authorised

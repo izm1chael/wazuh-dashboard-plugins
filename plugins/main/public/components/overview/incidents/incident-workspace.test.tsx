@@ -66,6 +66,19 @@ describe('experimental incident workspace', () => {
     expect(api.create.mock.calls[0]).toEqual(api.create.mock.calls[1]);
   });
 
+  test('displays only returned finding references and delivered audit events', async () => {
+    const { api, back } = setup();
+    api.findings.mockResolvedValue({ findings: [{ index: '.ds-wazuh-findings-v5-security-000001', document_id: 'visible-doc' }], revision: 1, unavailable_count: 1 });
+    api.activity.mockResolvedValue({ events: [{ id: ID + ':1', incident_id: ID, revision: 1,
+      kind: 'created', actor: 'analyst', at: NOW, changes: {} }], observed_revision: 1, activity_pending: true });
+    render(<IncidentDetail api={api as IncidentApi} id={ID} back={back} />);
+    expect(await screen.findByText('visible-doc')).toBeInTheDocument();
+    expect(await screen.findByText('1 unavailable finding(s) on this page')).toBeInTheDocument();
+    expect(await screen.findByText('Incident created')).toBeInTheDocument();
+    expect(await screen.findByText('Audit delivery pending')).toBeInTheDocument();
+    expect(api.findings).toHaveBeenCalledWith(ID, 0, 1);
+  });
+
   test('sends expected revision and blocks another mutation until reload after failure', async () => {
     const { api, back } = setup();
     api.command.mockRejectedValueOnce(new Error('conflict'));

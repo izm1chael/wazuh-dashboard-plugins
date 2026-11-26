@@ -32,6 +32,29 @@ describe('dedicated indexer incident adapter', () => {
     await expect(client.list()).rejects.toThrow(/projection/);
   });
 
+  test('activity reads are incident scoped and reject a mismatched event identity', async () => {
+    const { client, request } = setup();
+    const event = { id: ID + ':1', incident_id: ID, revision: 1, actor: 'analyst', kind: 'created', at: '2026-11-26T12:00:00.000Z', changes: {} };
+    request.mockResolvedValueOnce({ body: { events: [event], observed_revision: 1, activity_pending: false } });
+    expect((await client.activity(ID)).events).toEqual([event]);
+    expect(request.mock.calls[0][0]).toEqual({
+      method: 'GET', path: '/_plugins/_setup/incidents/' + ID + '/activity', querystring: { before: 0, limit: 50 },
+    });
+    request.mockResolvedValueOnce({ body: { events: [{ ...event, incident_id: 'other' }], observed_revision: 1, activity_pending: false } });
+    await expect(client.activity(ID)).rejects.toThrow(/activity response/);
+  });
+
+  test('finding reads require a revision for later pages and reject leaked source fields', async () => {
+    const { client, request } = setup();
+    await expect(client.findings(ID, 25)).rejects.toThrow();
+    expect(request).not.toHaveBeenCalled();
+    const ref = { index: '.ds-wazuh-findings-v5-security-000001', document_id: 'doc' };
+    request.mockResolvedValueOnce({ body: { findings: [ref], unavailable_count: 1, revision: 2 } });
+    expect((await client.findings(ID, 0, 2)).findings).toEqual([ref]);
+    request.mockResolvedValueOnce({ body: { findings: [{ ...ref, source: { secret: true } }], unavailable_count: 0, revision: 2 } });
+    await expect(client.findings(ID, 0, 2)).rejects.toThrow(/finding response/);
+  });
+
   test('create sends only the allowed fields to the fixed API', async () => {
     const { client, request } = setup();
     const input = { title: 'Example', severity: 'high' as const, created_by: 'forged', owner: 'forged' };
