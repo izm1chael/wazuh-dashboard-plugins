@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSelect, EuiSpacer, EuiText, EuiTitle } from '@elastic/eui';
 import { EVIDENCE_TYPES, RELATION_TYPES } from '../../../../common/incidents/contracts';
 import type { CollaborationPage, EvidenceArtifactType, IncidentRelationType, IncidentSummary, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
+import { LocalEvidenceVerifier } from './local-evidence-verifier';
 import { validateTags } from '../../../../common/incidents/investigation-register-validation';
 
 export function IncidentRegisterPanel({ page, incident, disabled, command, openRelated }: {
@@ -40,7 +41,7 @@ export function IncidentRegisterPanel({ page, incident, disabled, command, openR
     {relations.map(row => <EuiPanel key={row.id} hasShadow={false} hasBorder>
       <EuiText size='s'><strong>{row.type.replace(/_/g, ' ')}</strong> · {row.target_id}<br />
         {row.reason}<br />{row.recorded_by} · {row.recorded_at}</EuiText>
-      {openRelated && <EuiButtonEmpty onClick={() => openRelated(row.target_id)}>Open referenced incident</EuiButtonEmpty>}
+      {openRelated && <EuiButtonEmpty disabled={disabled && incident.status !== 'closed'} onClick={() => openRelated(row.target_id)}>Open referenced incident</EuiButtonEmpty>}
       <EuiButtonEmpty disabled={blocked} onClick={() => { setSelected('relation:' + row.id); setReason(''); }}>Remove relation</EuiButtonEmpty>
     </EuiPanel>)}
     <EuiFormRow label='Related incident UUID'><EuiFieldText value={target} maxLength={36} disabled={blocked} onChange={e => setTarget(e.target.value)} /></EuiFormRow>
@@ -56,6 +57,7 @@ export function IncidentRegisterPanel({ page, incident, disabled, command, openR
         Custody reference: {row.custody_reference}<br />
         Recorded by {row.recorded_by} · {row.recorded_at}
         {row.state === 'withdrawn' && <><br />Withdrawn by {row.withdrawn_by} · {row.withdrawn_at} · {row.withdrawal_reason}</>}</EuiText>
+      <LocalEvidenceVerifier evidence={row} />
       {row.state === 'recorded' && <EuiButtonEmpty disabled={blocked} onClick={() => { setSelected('evidence:' + row.id); setReason(''); }}>Withdraw evidence attestation</EuiButtonEmpty>}
     </EuiPanel>)}
     <EuiFormRow label='Artifact type'><EuiSelect value={type} disabled={blocked} options={EVIDENCE_TYPES.map(value => ({ value, text: value.replace(/_/g, ' ') }))} onChange={e => setType(e.target.value as EvidenceArtifactType)} /></EuiFormRow>
