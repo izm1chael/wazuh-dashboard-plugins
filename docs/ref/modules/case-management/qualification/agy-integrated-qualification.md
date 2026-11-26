@@ -35,3 +35,7 @@ Include both forks' latest hunt commits. Execute the four qualification groups i
 ## Threat intelligence catalog phase gate
 
 Include both forks' final CTI phase commits. Execute all six qualification groups in ../incident-threat-intelligence.md. Verify isolated state index, explicit grants, CAS and revision conservation, external sighting attestation boundaries, restricted STIX subset, local export, and historical hunt DLS/FLS. No production qualification based on standalone validators alone. Record exact SHAs and full build, browser, OpenSearch and independent STIX evidence in the integrated receipt.
+
+## Native-finding analytics execution phase gate
+
+Use both forks' final analytics heads. Follow indexer docs/ref/modules/case-management/incident-analytics-execution.md and the six integrated qualification groups. Keep both analytics and incident gates off in production pending approval. Exercise exact policy content approval, real service-account search/GET context and DLS/FLS, deterministic group/window receipts, crash/replay and late arrivals, local cursor and TLS, read-only dashboard health. Python scheduler 11 mocked-service tests and strict TypeScript 47 standalone assertions passed; 33 source checks passed. Full builds and live authorization/execution remain unqualified. Record exact SHAs, live results and blocked recovery procedures. Native detection engine and CTI catalog are unchanged; do not claim full Sentinel analytics parity.
