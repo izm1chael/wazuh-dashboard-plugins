@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { EuiBasicTable, EuiBasicTableColumn, EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import type { CollaborationPage, IncidentSummary, IncidentTask, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
+import { IncidentPlaybooksPanel } from './incident-playbooks-panel';
 
 export function IncidentCollaborationPanel({ api, incident, disabled, command }: {
   api: IncidentApi; incident: IncidentSummary; disabled: boolean;
@@ -23,7 +24,7 @@ export function IncidentCollaborationPanel({ api, incident, disabled, command }:
   }, [api, incident.id, before, reload]);
 
   const stale = !!page && page.observed_revision !== incident.revision;
-  const blocked = disabled || loading || error || stale;
+  const blocked = disabled || loading || error || stale || !page || page.activity_pending;
   const tasksBlocked = blocked || !incident.owner;
   const tasks = page?.tasks ?? [];
   const completed = tasks.filter(task => task.status === 'completed').length;
@@ -42,6 +43,7 @@ export function IncidentCollaborationPanel({ api, incident, disabled, command }:
     {stale && <EuiCallOut color='warning' title='Incident changed'>Reload the incident before making changes.</EuiCallOut>}
     {page?.activity_pending && <EuiCallOut color='warning' title='Note or activity delivery pending' />}
     {page && <EuiText size='s'>{completed} of {tasks.length} tasks complete</EuiText>}
+    {page && <IncidentPlaybooksPanel page={page} disabled={tasksBlocked} command={command} />}
     <EuiBasicTable<IncidentTask> items={tasks} columns={columns} itemId='id' loading={loading} noItemsMessage='No investigation tasks' />
     <form onSubmit={event => { event.preventDefault(); if (!tasksBlocked && title.trim()) void command({ kind: 'create-task', title }); }}>
       <EuiFormRow label='New task'><EuiFieldText value={title} maxLength={1024} disabled={tasksBlocked} onChange={e => setTitle(e.target.value)} /></EuiFormRow>

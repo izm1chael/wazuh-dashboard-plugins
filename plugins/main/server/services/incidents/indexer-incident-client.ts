@@ -3,6 +3,7 @@ export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, Queue
 import { validateCorrelationPolicy, validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
 import { validateMetricsQuery, validateMetricsReport } from '../../../common/incidents/metrics-validation';
 import { validateResponsePage, validateIssuedResponsePage } from '../../../common/incidents/response-validation';
+import { validatePlaybooks } from '../../../common/incidents/playbook-validation';
 import { validateIncidentId } from './incident-id';
 
 /** Production routes must bind this transport to asCurrentUser, never an internal
@@ -47,6 +48,8 @@ function commandBody(command: IndexerIncidentCommand): object {
     case 'complete-task':
     case 'reopen-task':
       return { task_id: command.task_id };
+    case 'apply-playbook':
+      return { template_id: command.template_id, version: command.version };
     case 'request-response':
       return { type: command.type, scope: command.scope, reason: command.reason };
     case 'approve-response':
@@ -214,6 +217,7 @@ export class IndexerIncidentClient {
           typeof task.title !== 'string' || !['open', 'completed'].includes(task.status))) {
       throw new Error('Invalid collaboration response');
     }
+    validatePlaybooks(body, id);
     return body;
   }
 
@@ -317,7 +321,8 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
       Object.prototype.hasOwnProperty.call(incident, 'pending_activity') ||
       Object.prototype.hasOwnProperty.call(incident, 'findings') ||
       Object.prototype.hasOwnProperty.call(incident, 'create_request_hash') ||
-      Object.prototype.hasOwnProperty.call(incident, 'response_requests')) {
+      Object.prototype.hasOwnProperty.call(incident, 'response_requests') ||
+      Object.prototype.hasOwnProperty.call(incident, 'playbook_runs')) {
     throw new Error('Invalid incident projection; reload before retrying');
   }
 }

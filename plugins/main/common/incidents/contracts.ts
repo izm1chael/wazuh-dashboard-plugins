@@ -47,6 +47,7 @@ export type IndexerIncidentCommand =
   | { kind: 'add-note'; body: string }
   | { kind: 'create-task'; title: string }
   | { kind: 'complete-task' | 'reopen-task'; task_id: string }
+  | { kind: 'apply-playbook'; template_id: string; version: number }
   | { kind: 'request-response'; type: ResponseIntent; scope: string; reason: string }
   | { kind: 'approve-response' | 'reject-response' | 'cancel-response'; response_id: string; reason: string }
   | { kind: 'record-response-outcome'; response_id: string; outcome: ManualResponseOutcome; reason: string };
@@ -104,6 +105,7 @@ export interface IncidentTask {
   completed_by: string | null; completed_at: string | null;
 }
 export interface CollaborationPage {
+  playbooks?: PlaybookPreview[]; playbook_runs?: PlaybookRun[];
   notes: IncidentNote[]; tasks: IncidentTask[]; observed_revision: number; activity_pending: boolean; next_before?: number;
 }
 
@@ -169,4 +171,12 @@ export interface IssuedResponseRecord extends FindingReference {
 export interface IssuedResponsePage {
   issued_responses: IssuedResponseRecord[]; revision: number; visible_finding_count: number;
   next_offset?: number; mode: 'exact_visible_finding_page_issued_only';
+}
+
+export interface PlaybookPreview {
+  template_id: string; version: number; title: string; tasks: string[];
+  state: 'available' | 'already_applied' | 'not_applicable' | 'capacity_exceeded';
+}
+export interface PlaybookRun {
+  template_id: string; version: number; applied_revision: number; applied_by: string; applied_at: string; task_ids: string[];
 }

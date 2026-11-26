@@ -220,6 +220,11 @@ export function registerIncidentRoutes(router: IRouter) {
       client(context).command(request.params.id, request.query.expected_revision, { kind, ...request.body })));
   }
 
+  router.post({ path: ROOT + '/{id}/apply-playbook', validate: { params, query, body: schema.object({
+    template_id: schema.string({ minLength: 1, maxLength: 64 }), version: revisionSchema,
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'apply-playbook', ...request.body })));
+
   const responseReason = schema.string({ minLength: 1, maxLength: 2048 });
   const responseId = schema.string({ minLength: 1, maxLength: 64 });
   router.post({ path: ROOT + '/{id}/request-response', validate: { params, query, body: schema.object({
