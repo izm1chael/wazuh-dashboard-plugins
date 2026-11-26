@@ -1,5 +1,7 @@
 import { isDeepStrictEqual } from 'util';
 import { Activity, Incident, IncidentDomainError } from './incident-domain';
+import { buildIncidentQuery, IncidentPage, IncidentQuery } from './incident-query';
+import { validateIncidentId } from './incident-id';
 
 export const INCIDENT_INDEX = 'wazuh-cases-v1';
 export const ACTIVITY_INDEX = 'wazuh-case-activity-v1';
@@ -59,6 +61,35 @@ function documentPath(index: string, operation: '_doc' | '_create', id: string):
  */
 export class IncidentStore {
   constructor(private readonly transport: IncidentTransport) {}
+
+  async list(query: IncidentQuery): Promise<IncidentPage> {
+    const body = buildIncidentQuery(query);
+    const limit = query.limit ?? 50;
+    const response = await this.transport.request<{
+      timed_out?: boolean;
+      _shards?: { failed: number };
+      hits: { hits: Array<{ _source: Incident; sort: [string, string] }> };
+    }>({
+      method: 'GET',
+      path: '/' + INCIDENT_INDEX + '/_search',
+      querystring: { allow_partial_search_results: 'false' },
+      body,
+    });
+    if (response.body.timed_out || response.body._shards?.failed) {
+      throw new Error('Incomplete incident queue search');
+    }
+    const hits = response.body.hits.hits;
+    const selected = hits.slice(0, limit);
+    const incidents = selected.map(hit => {
+      validateIncidentId(hit._source.id);
+      // Enforce projection locally as well as in the search request.
+      const { pending_activity, ...incident } = hit._source;
+      return incident;
+    });
+    const next = hits.length > limit ? selected[selected.length - 1].sort : undefined;
+    if (next !== undefined) buildIncidentQuery({ ...query, after: next });
+    return { incidents, ...(next === undefined ? {} : { next }) };
+  }
 
   async get(id: string): Promise<VersionedIncident> {
     const { body } = await this.transport.request<Document<Incident>>({

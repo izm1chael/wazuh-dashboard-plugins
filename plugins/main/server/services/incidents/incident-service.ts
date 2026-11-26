@@ -7,6 +7,8 @@ import {
   IncidentDomainError,
 } from './incident-domain';
 import { VersionedIncident } from './incident-store';
+import { IncidentPage, IncidentQuery, buildIncidentQuery } from './incident-query';
+import { validateIncidentId } from './incident-id';
 
 export type IncidentPermission = 'read' | 'create' | 'assign' | 'transition' | 'close' | 'reopen';
 export interface IncidentPrincipal {
@@ -21,6 +23,7 @@ export interface IncidentAuthorizer {
 }
 
 export interface IncidentPersistence {
+  list(query: IncidentQuery): Promise<IncidentPage>;
   get(id: string): Promise<VersionedIncident>;
   create(record: Incident): Promise<VersionedIncident>;
   commit(previous: VersionedIncident, record: Incident): Promise<VersionedIncident>;
@@ -36,13 +39,6 @@ const permissions: Record<IncidentCommand['kind'], IncidentPermission> = {
   assign: 'assign', start_triage: 'transition', activate: 'transition',
   close: 'close', reopen: 'reopen',
 };
-
-export function validateIncidentId(id: string): void {
-  if (typeof id !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-    throw new IncidentDomainError('invalid', 'Invalid incident ID');
-  }
-}
 
 function requirePrincipal(principal: IncidentPrincipal): void {
   if (!principal || typeof principal.username !== 'string' || !principal.username.trim() ||
@@ -67,6 +63,13 @@ export class IncidentService {
     private readonly reportPendingDelivery: (incidentId: string, error: unknown) => void,
   ) {}
 
+  async list(principal: IncidentPrincipal, query: IncidentQuery): Promise<IncidentPage> {
+    requirePrincipal(principal);
+    await this.authorization.require(principal, 'read');
+    buildIncidentQuery(query);
+    return this.store.list(query);
+  }
+
   async get(principal: IncidentPrincipal, id: string): Promise<Omit<Incident, 'pending_activity'>> {
     requirePrincipal(principal);
     await this.authorization.require(principal, 'read');
@@ -77,6 +80,7 @@ export class IncidentService {
   async create(principal: IncidentPrincipal, input: CreateIncident): Promise<IncidentMutationResult> {
     requirePrincipal(principal);
     await this.authorization.require(principal, 'create');
+    await this.authorization.require(principal, 'read');
     const record = createIncident(input, this.generateId(), principal.username, this.clock());
     return this.finish(await this.store.create(record));
   }
@@ -89,6 +93,7 @@ export class IncidentService {
       throw new IncidentDomainError('invalid', 'Unknown incident command');
     }
     await this.authorization.require(principal, permissions[command.kind]);
+    await this.authorization.require(principal, 'read');
     validateIncidentId(id);
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
       throw new IncidentDomainError('invalid', 'Expected a positive incident revision');

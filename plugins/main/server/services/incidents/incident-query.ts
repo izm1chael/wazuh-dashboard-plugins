@@ -1,7 +1,12 @@
 import { IncidentDomainError, SEVERITIES, Severity } from './incident-domain';
-import { validateIncidentId } from './incident-service';
+import { validateIncidentId } from './incident-id';
 
 export type IncidentQueue = 'open' | 'new' | 'triaging' | 'active' | 'unassigned' | 'closed' | 'all';
+export interface IncidentPage {
+  incidents: Array<Omit<import('./incident-domain').Incident, 'pending_activity'>>;
+  next?: [string, string];
+}
+
 export interface IncidentQuery {
   queue?: IncidentQueue;
   severity?: Severity;

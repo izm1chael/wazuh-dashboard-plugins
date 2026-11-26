@@ -14,6 +14,29 @@ function setup() {
 }
 
 describe('incident persistence', () => {
+  test('returns a bounded queue page and omits internal activity payload', async () => {
+    const { request, store } = setup();
+    const record = create();
+    const cursor = [record.updated_at, record.id];
+    request.mockResolvedValueOnce({ body: { hits: { hits: [
+      { _source: record, sort: cursor },
+      { _source: { ...record, id: '00000000-0000-4000-8000-000000000002' } },
+    ] } } });
+    const result = await store.list({ limit: 1 });
+    expect(result.incidents).toHaveLength(1);
+    expect(result.incidents[0]).not.toHaveProperty('pending_activity');
+    expect(result.next).toEqual(cursor);
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      path: '/wazuh-cases-v1/_search',
+      querystring: { allow_partial_search_results: 'false' },
+    }));
+  });
+  test('rejects partial queue search', async () => {
+    const { request, store } = setup();
+    request.mockResolvedValueOnce({ body: { timed_out: true } });
+    await expect(store.list({})).rejects.toThrow(/Incomplete/);
+  });
+
   test('creates the aggregate without overwriting an existing incident', async () => {
     const { request, store } = setup();
     request.mockResolvedValueOnce(writeResult);

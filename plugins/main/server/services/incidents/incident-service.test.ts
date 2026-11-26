@@ -9,6 +9,7 @@ const previous = { record: { ...record, pending_activity: null }, seqNo: 2, prim
 
 function setup() {
   const store = {
+    list: jest.fn().mockResolvedValue({ incidents: [] }),
     get: jest.fn().mockResolvedValue(previous),
     create: jest.fn().mockImplementation(async incident => ({ record: incident, seqNo: 1, primaryTerm: 1 })),
     commit: jest.fn().mockImplementation(async (_, incident) => ({ record: incident, seqNo: 3, primaryTerm: 1 })),
@@ -25,6 +26,13 @@ describe('incident service', () => {
     authorization.require.mockRejectedValueOnce(new Error('denied'));
     await expect(service.get(principal, ID)).rejects.toThrow('denied');
     expect(store.get).not.toHaveBeenCalled();
+  });
+  test('queue read is authorized and validates pagination before storage', async () => {
+    const { service, authorization, store } = setup();
+    await expect(service.list(principal, { limit: 101 })).rejects.toThrow();
+    expect(store.list).not.toHaveBeenCalled();
+    expect(await service.list(principal, { queue: 'open' })).toEqual({ incidents: [] });
+    expect(authorization.require).toHaveBeenCalledWith(principal, 'read');
   });
   test('creates using authenticated attribution, never an input actor', async () => {
     const { service, authorization, store } = setup();
