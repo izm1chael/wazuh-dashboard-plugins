@@ -16,7 +16,7 @@ export function IncidentWorkspace() {
   const open = (id: string) => history.push('/incidents/' + encodeURIComponent(id));
   return <EuiPage><EuiPageBody><EuiPanel paddingSize='l'>
     {incidentId === 'tuning' ? <IncidentTuningPanel back={back} /> : incidentId === 'metrics' ? <IncidentMetricsPanel back={back} /> : incidentId === 'correlation' ? <CorrelationPreviewPanel back={back} /> : incidentId === 'new' ? <IncidentCreate api={incidentApi} back={back} open={open} /> :
-      incidentId ? <IncidentDetail key={incidentId} id={incidentId} api={incidentApi} back={back} /> :
+      incidentId ? <IncidentDetail key={incidentId} id={incidentId} api={incidentApi} back={back} openRelated={open} /> :
         <><EuiButtonEmpty onClick={() => history.push('/incidents/tuning')}>Detection tuning evaluation</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/metrics')}>SOC reporting</EuiButtonEmpty><EuiButtonEmpty onClick={() => history.push('/incidents/correlation')}>Correlation preview</EuiButtonEmpty><EuiSpacer size='s' /><IncidentQueue api={incidentApi} open={open} create={() => history.push('/incidents/new')} /></>}
   </EuiPanel></EuiPageBody></EuiPage>;
 }
