@@ -10,6 +10,7 @@ import { IncidentResponsePanel } from './incident-response-panel';
 import { IncidentTuningGovernancePanel } from './incident-tuning-governance-panel';
 import { IncidentRuleHistoryPanel } from './incident-rule-history-panel';
 import { IncidentAiPanel } from './incident-ai-panel';
+import { IncidentHandoverPanel } from './incident-handover-panel';
 import { IncidentInvestigationPanel } from './incident-investigation-panel';
 import { IncidentMetadataEditor } from './incident-metadata-editor';
 
@@ -65,7 +66,7 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
     {error && <EuiCallOut color='danger' title={error} />}
     {pending && <EuiCallOut color='warning' title='Change saved; audit delivery was pending'>The recovery worker retries delivery. This notice reflects the last mutation response, not current delivery status.</EuiCallOut>}
     {loading && <EuiText>Loading incident…</EuiText>}
-    {incident && <>
+    {incident && !loading && <>
       <EuiTitle size='l'><h1>{incident.title}</h1></EuiTitle>
       <EuiText size='s'>{incident.id} · Revision {incident.revision}</EuiText>
       <EuiSpacer size='m' />
@@ -92,7 +93,7 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
         {!incident.owner && incident.status === 'new' && <EuiFlexItem grow={false}><EuiButton disabled={disabled} onClick={() => command({ kind: 'assign-self' })}>Claim incident</EuiButton></EuiFlexItem>}
         {incident.owner && incident.status === 'new' && <>
           <EuiFlexItem grow={false}><EuiButton disabled={disabled} onClick={() => command({ kind: 'start-triage' })}>Start triage</EuiButton></EuiFlexItem>
-          <EuiFlexItem grow={false}><EuiButton disabled={disabled} onClick={() => command({ kind: 'unassign' })}>Return to queue</EuiButton></EuiFlexItem>
+          <EuiFlexItem grow={false}><EuiButton disabled={disabled || !!incident.handover} onClick={() => command({ kind: 'unassign' })}>Return to queue</EuiButton></EuiFlexItem>
         </>}
         {incident.status === 'triaging' && <EuiFlexItem grow={false}><EuiButton disabled={disabled} onClick={() => command({ kind: 'activate' })}>Begin investigation</EuiButton></EuiFlexItem>}
       </EuiFlexGroup>
@@ -107,11 +108,12 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
           options={['true_positive', 'benign_positive', 'false_positive', 'undetermined', 'duplicate'].map(value => ({ value, text: value.replace(/_/g, ' ') }))}
           onChange={e => setClassification(e.target.value as Classification)} /></EuiFormRow>}
         <EuiFormRow label={incident.status === 'closed' ? 'Reopening reason' : 'Closure reason'}><EuiTextArea value={reason} disabled={disabled} maxLength={8192} onChange={e => setReason(e.target.value)} /></EuiFormRow>
-        <EuiButton disabled={disabled || !reason.trim()} onClick={() => command(incident.status === 'closed' ? { kind: 'reopen', reason } : { kind: 'close', classification, reason })}>
+        <EuiButton disabled={disabled || !!incident.handover || !reason.trim()} onClick={() => command(incident.status === 'closed' ? { kind: 'reopen', reason } : { kind: 'close', classification, reason })}>
           {incident.status === 'closed' ? 'Reopen incident' : 'Close incident'}
         </EuiButton>
       </>}
       <EuiSpacer size='l' />
+      <IncidentHandoverPanel key={id + ':' + incident.revision} incident={incident} disabled={disabled} command={command} />
       {incident.owner && incident.status !== 'closed' && <IncidentMetadataEditor key={id + ':' + incident.revision} incident={incident} disabled={disabled} command={command} />}
       <EuiSpacer size='l' />
       <IncidentFindingsPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed' || !incident.owner} command={command} />
