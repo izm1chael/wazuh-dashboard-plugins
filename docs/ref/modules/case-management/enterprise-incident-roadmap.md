@@ -26,3 +26,9 @@ Existing Wazuh finding case API is intentionally unchanged. The core manager is 
 ## Release gate
 
 No production deployment or upstream submission until local AGY validation has established indexer/dashboard version compatibility, successful builds, role restrictions, migration integrity, durable activity recovery, realistic SOC workflows and regression results. Rebase/forward-port to the supported upstream release after RC2 qualification.
+
+## Security architecture decision
+
+The authoritative mutation engine is now implemented in the indexer fork, following Wazuh's permission-gated transport action pattern. The earlier TypeScript domain/store/service are isolated reference scaffolding; they must not be registered as a production privileged writer. Production dashboard routes will bind the dedicated indexer client to the current user. See [indexer security boundary](https://github.com/izm1chael/wazuh-indexer-plugins/blob/siem/incident-foundation/docs/ref/modules/case-management/incident-security-boundary.md).
+
+Initial staged indexer operations: create, self-assign, unassign new incident, start triage, activate, edit, close, reopen, attach and detach findings. These are not active routes until the indexer plugin registers them and role integration is qualified. The reference queue is also not a production privileged read path. Supervisor reassignment, idempotency, recovery scheduling, per-reader finding projection and registered read APIs remain outstanding. The dashboard adapter must never fall back to direct index writes or retry ambiguous mutations automatically.
