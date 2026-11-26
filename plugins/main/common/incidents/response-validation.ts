@@ -35,10 +35,10 @@ function valid(row: IncidentResponseRecord, id: string, revision: number): boole
   }
 }
 export function validateResponsePage(body: IncidentResponsePage, id: string): void {
-  if (!body || body.mode !== 'manual_tracking_only' || typeof body.activity_pending !== 'boolean' ||
+  if (!body || !['manual_tracking_only', 'governed_response_tracking'].includes(body.mode) || typeof body.activity_pending !== 'boolean' ||
       !Number.isSafeInteger(body.observed_revision) || body.observed_revision < 1 ||
       !Array.isArray(body.responses) || body.responses.length > 50 ||
-      !body.responses.every(row => valid(row, id, body.observed_revision)) ||
+      !body.responses.every(row => valid(row, id, body.observed_revision) && (body.mode !== 'manual_tracking_only' || row.type !== 'scan_vulnerability')) ||
       new Set(body.responses.map(row => row.id)).size !== body.responses.length) {
     throw new Error('Invalid incident response projection');
   }
