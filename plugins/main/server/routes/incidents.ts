@@ -1,3 +1,4 @@
+import { BEHAVIOUR_FIELDS } from '../../common/incidents/behaviour-contract';
 import { PLAYBOOKS as AUTOMATION_PLAYBOOKS, STATUSES as AUTOMATION_STATUSES } from '../../common/incidents/automation-contract';
 import { INDICATOR_TYPES, INDICATOR_TLP } from '../../common/incidents/indicator-contract';
 import { HUNT_FIELDS } from '../../common/incidents/hunt-contract';
@@ -126,6 +127,20 @@ export function registerIncidentRoutes(router: IRouter) {
     expected_revision: catalogRevision, id: idSchema, sighting_revision: revisionSchema, reason: schema.string({ minLength: 1, maxLength: 1024 }),
   }) } }, async (context, request, response) => respond(response, () => client(context).withdrawIndicatorSighting(
     request.body.expected_revision, request.body.id, request.body.sighting_revision, request.body.reason)));
+
+  router.post({
+    path: '/indexer/incident-behaviour/rule-assess',
+    validate: { body: schema.object({
+      field: schema.oneOf(BEHAVIOUR_FIELDS.map(value => schema.literal(value))),
+      value: schema.string({ minLength: 1, maxLength: 256 }),
+      rule_uuid: idSchema, day: schema.string({ minLength: 20, maxLength: 20 }),
+    }) },
+  }, async (context, request, response) => respond(response, async () => {
+    if (huntRunning) throw { statusCode: 429 };
+    huntRunning = true;
+    try { return await client(context).assessRuleBehaviour(request.body); }
+    finally { huntRunning = false; }
+  }));
 
   router.post({
     path: '/indexer/incident-behaviour/assess',
