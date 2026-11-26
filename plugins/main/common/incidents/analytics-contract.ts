@@ -47,7 +47,7 @@ export function validateAnalyticsStatus(status: AnalyticsStatus, query: Analytic
       typeof status.actor !== 'string' || !status.actor.trim() || status.actor.length > 1024 ||
       /[\x00-\x1f\x7f-\x9f]/.test(status.actor)) return fail();
   const reserved = time(status.reserved_at, true);
-  if (reserved < time(query.until) || (status.state === 'reserved' && status.completed_at !== null) ||
+  if (reserved < time(query.until) + 120000 || (status.state === 'reserved' && status.completed_at !== null) ||
       (status.state === 'completed' && (status.completed_at === null || time(status.completed_at, true) < reserved))) return fail();
   return status;
 }
