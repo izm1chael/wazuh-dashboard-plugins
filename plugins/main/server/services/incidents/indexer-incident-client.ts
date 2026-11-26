@@ -1,3 +1,4 @@
+import { BehaviourObservation, ObservationPage, ObservationReview, ObservationPromotion, validateObservationDay, validateObservationPage, validateObservationReview, validateObservationPromotion, validateReviewResult, validatePromotionResult } from '../../../common/incidents/behaviour-observation-contract';
 import { RuleBehaviourInput, RuleBehaviourReport, validateRuleBehaviour, validateRuleBehaviourReport } from '../../../common/incidents/rule-behaviour-contract';
 import { BehaviourReport, validateBehaviourInput, validateBehaviourReport } from '../../../common/incidents/behaviour-contract';
 import { validateHuntBookmarks } from '../../../common/incidents/hunt-bookmark-validation';
@@ -179,6 +180,30 @@ export class IndexerIncidentClient {
     const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
       body: { operation: 'withdraw-sighting', expected_revision: expected, id, sighting_revision: sightingRevision, reason } });
     return validateMutation(body, expected, 1);
+  }
+
+  async observationDay(day: string): Promise<ObservationPage> {
+    try { validateObservationDay(day); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<ObservationPage>({
+      method: 'POST', path: '/_plugins/_setup/incident-behaviour/observations/day', body: { day },
+    });
+    return validateObservationPage(body,day);
+  }
+
+  async reviewObservation(input: ObservationReview): Promise<BehaviourObservation> {
+    try { validateObservationReview(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<BehaviourObservation>({
+      method: 'POST', path: '/_plugins/_setup/incident-behaviour/observations/review', body: input,
+    });
+    return validateReviewResult(body,input);
+  }
+
+  async promoteObservation(input: ObservationPromotion): Promise<BehaviourObservation> {
+    try { validateObservationPromotion(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<BehaviourObservation>({
+      method: 'POST', path: '/_plugins/_setup/incident-behaviour/observations/promote', body: input,
+    });
+    return validatePromotionResult(body,input);
   }
 
   async assessRuleBehaviour(input: RuleBehaviourInput): Promise<RuleBehaviourReport> {
