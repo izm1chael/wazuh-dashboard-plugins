@@ -1,3 +1,4 @@
+import { validateWorkflowRuns } from './workflow-validation';
 import type { IncidentResponsePage, IncidentResponseRecord, IssuedResponsePage, FindingReference } from './contracts';
 
 export const RESPONSE_INTENTS = ['investigate_endpoint', 'review_containment', 'review_indicator_block', 'collect_evidence', 'scan_vulnerability'] as const;
@@ -42,6 +43,7 @@ export function validateResponsePage(body: IncidentResponsePage, id: string): vo
       new Set(body.responses.map(row => row.id)).size !== body.responses.length) {
     throw new Error('Invalid incident response projection');
   }
+  validateWorkflowRuns(body, id);
 }
 
 const nullableText = (value: unknown) => value === null || text(value, 1024);
