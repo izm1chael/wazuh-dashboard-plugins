@@ -1,4 +1,4 @@
-import { IndicatorInput, IndicatorCatalog, CatalogMutation, validateBatch, validateCatalog, validateMutation, UUID, safeText } from '../../../common/incidents/indicator-contract';
+import { IndicatorInput, IndicatorCatalog, CatalogMutation, validateBatch, validateCatalog, validateMutation, UUID, safeText, timestamp } from '../../../common/incidents/indicator-contract';
 import { HuntInput, HuntReport, validateHunt, validateHuntReport } from '../../../common/incidents/hunt-contract';
 import { validateInvestigationRegister, validateTags } from '../../../common/incidents/investigation-register-validation';
 import type { IssuedResponsePage, IncidentResponsePage, IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
@@ -117,6 +117,24 @@ export class IndexerIncidentClient {
     if (!Number.isSafeInteger(expected) || expected < 1 || expected >= 2147483647 || !UUID.test(id) || !safeText(reason, 1024)) throw { statusCode: 400 };
     const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
       body: { operation: 'revoke', expected_revision: expected, id, reason } });
+    return validateMutation(body, expected, 1);
+  }
+
+  async recordIndicatorSighting(expected: number, id: string, observedAt: string, source: string, count: number): Promise<CatalogMutation> {
+    try {
+      if (!Number.isSafeInteger(expected) || expected < 1 || expected >= 2147483647 || !UUID.test(id) ||
+          !safeText(source, 256) || !Number.isSafeInteger(count) || count < 1 || count > 1000000) throw new Error('Invalid sighting');
+      timestamp(observedAt);
+    } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
+      body: { operation: 'record-sighting', expected_revision: expected, id, observed_at: observedAt, source, count } });
+    return validateMutation(body, expected, 1);
+  }
+  async withdrawIndicatorSighting(expected: number, id: string, sightingRevision: number, reason: string): Promise<CatalogMutation> {
+    if (!Number.isSafeInteger(expected) || expected < 1 || expected >= 2147483647 || !UUID.test(id) ||
+        !Number.isSafeInteger(sightingRevision) || sightingRevision < 1 || sightingRevision > expected || !safeText(reason, 1024)) throw { statusCode: 400 };
+    const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
+      body: { operation: 'withdraw-sighting', expected_revision: expected, id, sighting_revision: sightingRevision, reason } });
     return validateMutation(body, expected, 1);
   }
 
