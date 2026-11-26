@@ -396,6 +396,21 @@ export function registerIncidentRoutes(router: IRouter) {
   }) } }, async (context, request, response) => respond(response, () =>
     client(context).command(request.params.id, request.query.expected_revision, { kind: 'apply-playbook', ...request.body })));
 
+  router.post({ path: ROOT + '/{id}/start-workflow', validate: { params, query, body: schema.object({
+    template_id: schema.oneOf([schema.literal('vulnerability_investigation'), schema.literal('evidence_collection')]),
+    version: schema.literal(1), scope: schema.string({ minLength: 1, maxLength: 512 }),
+    reason: schema.string({ minLength: 1, maxLength: 2048 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'start-workflow', ...request.body })));
+  router.post({ path: ROOT + '/{id}/advance-workflow', validate: { params, query, body: schema.object({
+    run_id: schema.string({ minLength: 38, maxLength: 64 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'advance-workflow', ...request.body })));
+  router.post({ path: ROOT + '/{id}/cancel-workflow', validate: { params, query, body: schema.object({
+    run_id: schema.string({ minLength: 38, maxLength: 64 }), reason: schema.string({ minLength: 1, maxLength: 2048 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'cancel-workflow', ...request.body })));
+
   const responseReason = schema.string({ minLength: 1, maxLength: 2048 });
   const responseId = schema.string({ minLength: 1, maxLength: 64 });
   router.post({ path: ROOT + '/{id}/request-response', validate: { params, query, body: schema.object({
