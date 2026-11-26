@@ -3,6 +3,7 @@ import { EuiBasicTable, EuiBasicTableColumn, EuiButton, EuiButtonEmpty, EuiCallO
 import type { CollaborationPage, IncidentSummary, IncidentTask, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
 import { IncidentRegisterPanel } from './incident-register-panel';
+import { IncidentHuntBookmarks } from './incident-hunt-bookmarks';
 import { IncidentPlaybooksPanel } from './incident-playbooks-panel';
 
 export function IncidentCollaborationPanel({ api, incident, disabled, command, openRelated }: {
@@ -52,6 +53,7 @@ export function IncidentCollaborationPanel({ api, incident, disabled, command, o
     </form>
     <EuiSpacer size='l' />
     {page && !stale && <IncidentRegisterPanel openRelated={openRelated} page={page} incident={incident} disabled={tasksBlocked} command={command} />}
+    {page && !stale && page.hunt_bookmarks !== undefined && <IncidentHuntBookmarks bookmarks={page.hunt_bookmarks} disabled={tasksBlocked} command={command} openRelated={openRelated} />}
     <EuiTitle size='s'><h2>Analyst notes</h2></EuiTitle>
     <EuiSpacer size='s' />
     <EuiText size='s'>Notes are append-only and visible to authorized incident readers. Do not include restricted finding data or secrets.</EuiText>
