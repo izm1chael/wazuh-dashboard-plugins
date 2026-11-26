@@ -1,3 +1,4 @@
+import { HuntInput, HuntReport, validateHunt, validateHuntReport } from '../../../common/incidents/hunt-contract';
 import { validateInvestigationRegister, validateTags } from '../../../common/incidents/investigation-register-validation';
 import type { IssuedResponsePage, IncidentResponsePage, IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
@@ -95,6 +96,15 @@ function commandBody(command: IndexerIncidentCommand): object {
  */
 export class IndexerIncidentClient {
   constructor(private readonly transport: CurrentUserIncidentTransport) {}
+
+  async hunt(input: HuntInput): Promise<HuntReport> {
+    let payload: HuntInput;
+    try { payload = validateHunt(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<HuntReport>({
+      method: 'POST', path: '/_plugins/_setup/incident-hunt/search', body: payload,
+    });
+    return validateHuntReport(body, payload);
+  }
 
   async issuedResponses(id: string, offset = 0, expectedRevision = 0, limit = 25): Promise<IssuedResponsePage> {
     validateIncidentId(id);
