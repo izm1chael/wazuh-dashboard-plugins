@@ -2,7 +2,7 @@ import { AssessmentDigest, buildDigest, Fact, PAGE_SIZE, parseRecommendations } 
 
 export const HYPOTHESES = ['insufficient_evidence', 'possible_true_positive', 'possible_benign_positive', 'possible_false_positive'] as const;
 export const TUNING = ['compare_benign_baseline', 'review_rule_scope', 'review_threshold_or_window', 'review_duplicate_grouping', 'replay_positive_and_negative_tests'] as const;
-export type Probe = { kind: 'more_linked_findings' } | { kind: 'rule_prevalence'; sample: number };
+export type Probe = { kind: 'more_linked_findings' } | { kind: 'rule_prevalence'; sample: number } | { kind: 'rule_history'; sample: number };
 type Obj = Record<string, unknown>;
 const object = (v: unknown): Obj => {
   if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('Invalid agentic response');
@@ -15,7 +15,14 @@ export function exactRule(rawPage: unknown, sample: number): string | undefined 
   return typeof rule === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(rule) ? rule : undefined;
 }
 
-export function parsePlan(raw: string, firstPage: unknown, hasMore: boolean): Probe[] {
+export function exactRuleUuid(rawPage: unknown, sample: number): string | undefined {
+  const rows = object(rawPage).observations;
+  if (!Array.isArray(rows) || !Number.isInteger(sample) || sample < 1 || sample > rows.length) return undefined;
+  const rule = object(rows[sample - 1]).wazuh_rule_uuid;
+  return typeof rule === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(rule) ? rule : undefined;
+}
+
+export function parsePlan(raw: string, firstPage: unknown, hasMore: boolean, historyEnabled = false): Probe[] {
   const body = object(JSON.parse(raw));
   if (Object.keys(body).length !== 1 || !Array.isArray(body.probes) || body.probes.length > 2) throw new Error('Invalid probe plan');
   const seen = new Set<string>();
@@ -26,6 +33,8 @@ export function parsePlan(raw: string, firstPage: unknown, hasMore: boolean): Pr
     if (row.kind === 'more_linked_findings' && Object.keys(row).length === 1 && hasMore) return { kind: row.kind };
     if (row.kind === 'rule_prevalence' && Object.keys(row).length === 2 && typeof row.sample === 'number' &&
         exactRule(firstPage, row.sample)) return { kind: row.kind, sample: row.sample };
+    if (historyEnabled && row.kind === 'rule_history' && Object.keys(row).length === 2 && typeof row.sample === 'number' &&
+        exactRuleUuid(firstPage, row.sample)) return { kind: row.kind, sample: row.sample };
     throw new Error('Unavailable or unauthorized probe shape');
   });
 }

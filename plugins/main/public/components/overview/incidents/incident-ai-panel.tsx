@@ -34,14 +34,14 @@ const TUNING: Record<string, string> = {
   review_duplicate_grouping: 'Review duplicate finding grouping',
   replay_positive_and_negative_tests: 'Replay positive and negative detection test cases',
 };
-const PROBES: Record<string, string> = { more_linked_findings: 'Additional linked findings', rule_prevalence: 'Caller-visible rule prevalence (last 24 hours)' };
+const PROBES: Record<string, string> = { more_linked_findings: 'Additional linked findings', rule_prevalence: 'Caller-visible rule prevalence (last 24 hours)', rule_history: 'Bounded disclosure-eligible closed incident comparison' };
 const owns = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
 function validate(result: Assessment, incident: IncidentSummary, mode: Mode): void {
   if (!result || result.incident_id !== incident.id || result.observed_revision !== incident.revision ||
       result.mode !== mode || result.advisory_only !== true || !result.digest ||
       !['first_finding_page', 'expanded_linked_findings'].includes(result.digest.scope) ||
       typeof result.digest.complete_link_coverage !== 'boolean' || !Array.isArray(result.digest.facts) ||
-      result.digest.facts.length < 8 || result.digest.facts.length > 50 || !Array.isArray(result.probes) ||
+      result.digest.facts.length < 8 || result.digest.facts.length > 56 || !Array.isArray(result.probes) ||
       result.probes.length > 2 || new Set(result.probes).size !== result.probes.length ||
       result.probes.some(probe => !owns(PROBES, probe))) throw new Error('Invalid assessment response');
   if (result.provenance && (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(result.provenance.assessment_id) ||
@@ -118,7 +118,7 @@ export function IncidentAiPanel({ incident, disabled, assess = request, command 
   return <>
     <EuiTitle size='s'><h2>AI-assisted investigations</h2></EuiTitle>
     <EuiText size='s'><p>Choose a quick AI Review or a deeper Agentic SOC assessment. Both require an operator-approved configured provider and disclosure policy.</p></EuiText>
-    <EuiCallOut title='Advisory only'>Only bounded structured facts are sent to the configured provider. Raw finding content, entity values, incident text and credentials are not included in the evidence digest. Agentic SOC may also disclose caller-visible aggregate rule prevalence. No automatic classification, detection tuning, incident closure or response execution.</EuiCallOut>
+    <EuiCallOut title='Advisory only'>Only bounded structured facts are sent to the configured provider. Raw finding content, entity values, incident text and credentials are not included in the evidence digest. Agentic SOC may also disclose caller-visible aggregate rule prevalence and, if separately enabled, aggregate outcomes from a bounded sample of disclosure-eligible closed incidents. No automatic classification, detection tuning, incident closure or response execution.</EuiCallOut>
     <EuiSpacer size='s' />
     <EuiCheckbox id={'incident-ai-consent-' + incident.id} checked={consent} disabled={disabled || !!busy}
       label='I authorize this assessment under the configured provider and disclosure policy' onChange={event => setConsent(event.target.checked)} />
@@ -149,7 +149,7 @@ export function IncidentAiPanel({ incident, disabled, assess = request, command 
       <EuiText size='s'><p>{result.digest.complete_link_coverage ? 'All linked finding positions visible in this assessment.' : 'Partial linked-finding coverage.'} Visibility does not establish source completeness or correctness.</p>
         {result.mode === 'agentic_soc' && <p>Follow-up probes: {result.probes.map(probe => PROBES[probe]).join('; ') || 'None selected'}.</p>}
         <ol>{result.recommendations.map(row => <li key={row.action}>{renderCited(row, ACTIONS)}</li>)}</ol>
-        {result.hypothesis && <><h4>Unconfirmed classification hypothesis</h4><p>{renderCited(result.hypothesis, HYPOTHESES)}. Human corroboration required; rule frequency is not proof of a false positive.</p></>}
+        {result.hypothesis && <><h4>Unconfirmed classification hypothesis</h4><p>{renderCited(result.hypothesis, HYPOTHESES)}. Human corroboration required; rule frequency and past incident classifications are not proof of a false positive.</p></>}
         {result.tuning && <><h4>Detection tuning proposals — not applied</h4>
           {result.tuning.length ? <ul>{result.tuning.map(row => <li key={row.action}>{renderCited(row, TUNING)}</li>)}</ul> : <p>No tuning proposal returned.</p>}
           <p>Validate against benign and malicious test cases, assess detection coverage and obtain approval before changing a rule.</p></>}

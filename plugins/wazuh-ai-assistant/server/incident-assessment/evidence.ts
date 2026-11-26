@@ -71,6 +71,8 @@ export function buildDigest(summary: Obj, rawPage: unknown, offset = 0): Assessm
     const tactics = array(row.tactics, 48).filter((v): v is string => typeof v === 'string' && /^TA[0-9]{4}$/.test(v));
     const kinds = array(row.entities, 240).map(object).map(entity => entity.kind)
       .filter((v): v is string => typeof v === 'string' && ENTITY_KINDS.includes(v));
+    add('sample_' + (offset + n + 1) + '_exact_rule_uuid_present', typeof row.wazuh_rule_uuid === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(row.wazuh_rule_uuid));
     add('sample_' + (offset + n + 1) + '_exact_rule_present', typeof row.wazuh_rule_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(row.wazuh_rule_id));
     add('sample_' + (offset + n + 1) + '_techniques', [...new Set(techniques)].sort().slice(0, 12));
     add('sample_' + (offset + n + 1) + '_tactics', [...new Set(tactics)].sort().slice(0, 12));

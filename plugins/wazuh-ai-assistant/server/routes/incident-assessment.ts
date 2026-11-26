@@ -7,7 +7,8 @@ import type { ProviderConfig } from '../../common/types';
 import type { WazuhAiAssistantConfigType } from '../config';
 import { getApiKeyCipher } from '../plugin-services';
 import { getProviderAdapter } from '../providers/registry';
-import { addLinkedPage, addPrevalence, exactRule, HYPOTHESES, parseAgenticResult, parsePlan, prevalenceQuery, TUNING } from '../incident-assessment/agentic';
+import { appendHistoricalFacts, collectHistoricalOutcomes, recheckHistoricalSources, HistoricalOutcome } from '../incident-assessment/historical-outcomes';
+import { addLinkedPage, addPrevalence, exactRule, exactRuleUuid, HYPOTHESES, parseAgenticResult, parsePlan, prevalenceQuery, TUNING } from '../incident-assessment/agentic';
 import { ACTIONS, buildDigest, checkedSummary, PAGE_SIZE, parseRecommendations } from '../incident-assessment/evidence';
 
 type Settings = NonNullable<WazuhAiAssistantConfigType['incidentAssessment']>;
@@ -65,7 +66,21 @@ export function registerIncidentAssessmentRoute(router: IRouter, settings: Setti
       await read();
       if (controller.signal.aborted) throw new Error('Assessment cancelled');
       const adapter = getProviderAdapter(config.type);
+      let history: HistoricalOutcome | undefined;
+      const check = () => { if (controller.signal.aborted) throw new Error('Assessment cancelled'); };
+      const historyReader = {
+        list: async () => (await transport.request({ method: 'GET', path: ROOT.slice(0, -1),
+          querystring: { queue: 'closed', limit: 6 } })).body,
+        detail: async (sourceId: string) => (await transport.request({ method: 'GET', path: ROOT + encodeURIComponent(sourceId) })).body,
+        findings: async (sourceId: string, sourceRevision: number) => (await transport.request({ method: 'GET',
+          path: ROOT + encodeURIComponent(sourceId) + '/findings',
+          querystring: { limit: PAGE_SIZE, offset: 0, expected_revision: sourceRevision } })).body,
+      };
+      const checkHistory = async () => {
+        if (history) await recheckHistoricalSources(historyReader, history, settings.allowedTlp, check);
+      };
       async function ask(prompt: string): Promise<string> {
+        await checkHistory();
         await read();
         if (controller.signal.aborted) throw new Error('Assessment cancelled');
         let output = '', done = false;
@@ -88,7 +103,9 @@ export function registerIncidentAssessmentRoute(router: IRouter, settings: Setti
         const plan = parsePlan(await ask('Select zero to two useful read-only evidence probes. Return strict JSON only: ' +
           '{"probes":[{"kind":"more_linked_findings"},{"kind":"rule_prevalence","sample":1}]}. ' +
           'Choose more_linked_findings only if uninspected_links is positive. Choose rule_prevalence only for a visible sample number with exact_rule_present=true. ' +
-          'No other probe, query, target, or argument is allowed.'), page.body, Number(summary.finding_count) > PAGE_SIZE);
+          (settings.historicalOutcomeEnabled ? 'Optional third kind: {"kind":"rule_history","sample":1}; choose only when exact_rule_uuid_present=true. ' :
+            'Historical rule comparison is disabled. ') +
+          'No other probe, query, target, or argument is allowed.'), page.body, Number(summary.finding_count) > PAGE_SIZE, settings.historicalOutcomeEnabled);
         for (const probe of plan) {
           await read();
           if (controller.signal.aborted) throw new Error('Assessment cancelled');
@@ -96,6 +113,12 @@ export function registerIncidentAssessmentRoute(router: IRouter, settings: Setti
             const next = await transport.request({ method: 'GET', path: path + '/findings',
               querystring: { limit: PAGE_SIZE, offset: PAGE_SIZE, expected_revision: revision } });
             addLinkedPage(digest, summary, next.body);
+          } else if (probe.kind === 'rule_history') {
+            if (!settings.historicalOutcomeEnabled) throw new Error('Historical outcome probe disabled');
+            const rule = exactRuleUuid(page.body, probe.sample);
+            if (!rule) throw new Error('Missing exact Wazuh rule UUID');
+            history = await collectHistoricalOutcomes(historyReader, id, rule, probe.sample, settings.allowedTlp, check);
+            appendHistoricalFacts(digest, history);
           } else {
             const rule = exactRule(page.body, probe.sample);
             if (!rule) throw new Error('Missing exact rule identity');
@@ -107,11 +130,12 @@ export function registerIncidentAssessmentRoute(router: IRouter, settings: Setti
         result = parseAgenticResult(await ask(PROMPT + ' Instead return exactly three keys: recommendations (as above), ' +
           'hypothesis (one action and evidence_refs), tuning (zero to three distinct actions with evidence_refs). ' +
           'Hypothesis actions: ' + HYPOTHESES.join(', ') + '. Tuning actions: ' + TUNING.join(', ') +
-          '. Hypotheses are unconfirmed; prefer insufficient_evidence when uncertain. Frequency is not proof of a false positive. ' +
+          '. Hypotheses are unconfirmed; prefer insufficient_evidence when uncertain. Frequency is not proof of a false positive. History is a bounded sample of disclosure-eligible, currently closed incidents, not a finding-level label, rule-version test or false-positive rate. ' +
           'Tuning is a proposal for human evaluation, never a recommendation to disable or suppress a rule without testing.'), digest);
       } else {
         result = { recommendations: parseRecommendations(await ask(PROMPT), digest) };
       }
+      await checkHistory();
       await read();
       if (controller.signal.aborted) throw new Error('Assessment cancelled');
       const assessment = { incident_id: id, observed_revision: revision, mode, advisory_only: true as const,
@@ -121,6 +145,7 @@ export function registerIncidentAssessmentRoute(router: IRouter, settings: Setti
       if (request.body.save_private_report) {
         // No retries: an ambiguous write may already have created a conversation.
         try {
+          await checkHistory();
           await read();
           if (controller.signal.aborted || await resolveWazuhUsername(context, request) !== owner) throw new Error('Save preflight failed');
           const saved = await createConversation(context, report.document);
