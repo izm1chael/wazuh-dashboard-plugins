@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSelect, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import type { IncidentResponsePage, IncidentResponseRecord, IncidentSummary, IndexerIncidentCommand, ManualResponseOutcome, ResponseIntent } from '../../../../common/incidents/contracts';
 import { RESPONSE_INTENTS, RESPONSE_OUTCOMES, validScanScope } from '../../../../common/incidents/response-validation';
+import { IncidentWorkflowsPanel } from './incident-workflows-panel';
 import type { IncidentApi } from './incident-api';
 
 const label = (value: string) => value.replace(/_/g, ' ');
@@ -78,6 +79,7 @@ export function IncidentResponsePanel({ api, incident, disabled, command }: {
     {stale && <EuiCallOut color='warning' title='Incident revision changed'>Reload the incident before changing response records.</EuiCallOut>}
     {page?.activity_pending && <EuiCallOut color='warning' title='Response changes blocked while activity delivery is pending' />}
     {page && <>
+      {!stale && <IncidentWorkflowsPanel page={page} incident={incident} disabled={blocked} command={command} />}
       <EuiText size='s'><p>{page.responses.length} of 50 response records. Resolve or cancel outstanding requests before closing the incident.</p></EuiText>
       {page.responses.map(row => <React.Fragment key={row.id}>
         <ResponseRow row={row} disabled={blocked} owner={!!incident.owner} command={command} />
