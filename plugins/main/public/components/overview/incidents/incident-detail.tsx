@@ -113,7 +113,7 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
       <EuiSpacer size='l' />
       <IncidentFindingsPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed' || !incident.owner} command={command} />
       <EuiSpacer size='l' />
-      <IncidentAiPanel key={id + ':' + incident.revision + ':' + refresh} incident={incident} disabled={disabled} />
+      <IncidentAiPanel key={id + ':' + incident.revision + ':' + refresh} incident={incident} disabled={disabled || pending} command={command} />
       <EuiSpacer size='l' />
       <IncidentCollaborationPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed'} command={command} />
       <EuiSpacer size='l' />

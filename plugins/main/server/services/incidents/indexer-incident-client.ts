@@ -48,6 +48,10 @@ function commandBody(command: IndexerIncidentCommand): object {
     case 'complete-task':
     case 'reopen-task':
       return { task_id: command.task_id };
+    case 'record-ai-feedback':
+      return { assessment_id: command.assessment_id, assessed_revision: command.assessed_revision,
+        digest_sha256: command.digest_sha256, assessment_mode: command.assessment_mode,
+        assessment_rating: command.assessment_rating, hypothesis_review: command.hypothesis_review };
     case 'apply-playbook':
       return { template_id: command.template_id, version: command.version };
     case 'request-response':
@@ -322,7 +326,8 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
       Object.prototype.hasOwnProperty.call(incident, 'findings') ||
       Object.prototype.hasOwnProperty.call(incident, 'create_request_hash') ||
       Object.prototype.hasOwnProperty.call(incident, 'response_requests') ||
-      Object.prototype.hasOwnProperty.call(incident, 'playbook_runs')) {
+      Object.prototype.hasOwnProperty.call(incident, 'playbook_runs') ||
+      Object.prototype.hasOwnProperty.call(incident, 'ai_feedback_ids')) {
     throw new Error('Invalid incident projection; reload before retrying');
   }
 }

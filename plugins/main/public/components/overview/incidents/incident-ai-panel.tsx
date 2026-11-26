@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { EuiButton, EuiCallOut, EuiCheckbox, EuiFlexGroup, EuiFlexItem, EuiPanel, EuiSpacer, EuiText, EuiTitle } from '@elastic/eui';
+import { EuiButton, EuiCallOut, EuiCheckbox, EuiFlexGroup, EuiFlexItem, EuiPanel, EuiSelect, EuiFormRow, EuiSpacer, EuiText, EuiTitle } from '@elastic/eui';
 import { getHttp } from '../../../kibana-services';
-import type { IncidentSummary } from '../../../../common/incidents/contracts';
+import type { IncidentSummary, AiFeedbackRating, AiHypothesisReview, IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 
 type Mode = 'ai_review' | 'agentic_soc';
 interface Cited { action: string; evidence_refs: string[] }
@@ -44,6 +44,15 @@ function validate(result: Assessment, incident: IncidentSummary, mode: Mode): vo
       result.digest.facts.length < 8 || result.digest.facts.length > 50 || !Array.isArray(result.probes) ||
       result.probes.length > 2 || new Set(result.probes).size !== result.probes.length ||
       result.probes.some(probe => !owns(PROBES, probe))) throw new Error('Invalid assessment response');
+  if (result.provenance && (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(result.provenance.assessment_id) ||
+      result.provenance.schema_version !== 1 || !/^[0-9a-f]{64}$/.test(result.provenance.digest_sha256) ||
+      !Number.isFinite(Date.parse(result.provenance.assessed_at)) || typeof result.provenance.model !== 'string' ||
+      result.provenance.model.length > 256 || typeof result.provenance.provider_id !== 'string' || result.provenance.provider_id.length > 128)) {
+    throw new Error('Invalid assessment provenance');
+  }
+  if (result.private_report && (!['not_requested', 'saved', 'unconfirmed'].includes(result.private_report.state) ||
+      (result.private_report.state === 'saved' ? typeof result.private_report.id !== 'string' || !result.private_report.id :
+        result.private_report.id !== undefined))) throw new Error('Invalid report save state');
   const facts = result.digest.facts;
   if (facts.some((fact, n) => !fact || fact.ref !== 'F' + (n + 1) ||
       typeof fact.kind !== 'string' || !/^[a-z0-9_]{1,96}$/.test(fact.kind) ||
@@ -72,11 +81,15 @@ const request = (incident: IncidentSummary, mode: Mode, savePrivate: boolean) =>
 const label = (kind: string) => kind.replace(/_/g, ' ');
 const valueText = (value: Fact['value']) => Array.isArray(value) ? value.join(', ') || 'None in sampled fields' : String(value);
 
-export function IncidentAiPanel({ incident, disabled, assess = request }: {
+export function IncidentAiPanel({ incident, disabled, assess = request, command }: {
   incident: IncidentSummary; disabled: boolean; assess?: (incident: IncidentSummary, mode: Mode, savePrivate: boolean) => Promise<Assessment>;
+  command?: (value: IndexerIncidentCommand) => Promise<void>;
 }) {
   const [consent, setConsent] = useState(false);
   const [savePrivate, setSavePrivate] = useState(false);
+  const [rating, setRating] = useState<AiFeedbackRating>('partly_useful');
+  const [hypothesisReview, setHypothesisReview] = useState<AiHypothesisReview>('not_reviewed');
+  const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState<Mode>();
   const [result, setResult] = useState<Assessment>();
   const [error, setError] = useState('');
@@ -87,7 +100,7 @@ export function IncidentAiPanel({ incident, disabled, assess = request }: {
   async function run(mode: Mode) {
     if (blocked || inFlight.current) return;
     inFlight.current = true;
-    setConsent(false); setSavePrivate(false); setBusy(mode); setResult(undefined); setError('');
+    setConsent(false); setSavePrivate(false); setSharing(false); setHypothesisReview('not_reviewed'); setRating('partly_useful'); setBusy(mode); setResult(undefined); setError('');
     try {
       const response = await assess(incident, mode, savePrivate);
       validate(response, incident, mode);
@@ -148,6 +161,25 @@ export function IncidentAiPanel({ incident, disabled, assess = request }: {
         {result.private_report?.state === 'unconfirmed' && <p>Private report save could not be confirmed. Check AI Assistant history before trying again.</p>}
         <p>References identify bounded facts, not verified causal evidence. No shared incident evidence is automatically written.</p>
       </EuiText>
+      {result.provenance && command && incident.owner && <>
+        <EuiSpacer size='m' />
+        <EuiTitle size='xs'><h3>Analyst feedback</h3></EuiTitle>
+        <EuiText size='s'>Record an explicit analyst attestation in the shared incident activity history. Only assessment ID, digest hash, revision, mode and feedback choices are shared; not the evidence digest. This does not change classification or train the model.</EuiText>
+        <EuiFormRow label='Assessment usefulness'><EuiSelect value={rating} options={['useful', 'partly_useful', 'not_useful'].map(value => ({ value, text: label(value) }))}
+          onChange={event => setRating(event.target.value as AiFeedbackRating)} /></EuiFormRow>
+        {result.mode === 'agentic_soc' && <EuiFormRow label='Classification hypothesis review'><EuiSelect value={hypothesisReview}
+          options={['not_reviewed', 'agree', 'disagree'].map(value => ({ value, text: label(value) }))}
+          onChange={event => setHypothesisReview(event.target.value as AiHypothesisReview)} /></EuiFormRow>}
+        <EuiCheckbox id={'incident-ai-feedback-' + incident.id} checked={sharing} label='Share this feedback with incident readers'
+          onChange={event => setSharing(event.target.checked)} />
+        <EuiButton disabled={disabled || !!busy || !sharing} onClick={() => {
+          if (!result.provenance || !sharing) return;
+          setSharing(false);
+          void command({ kind: 'record-ai-feedback', assessment_id: result.provenance.assessment_id,
+            assessed_revision: result.observed_revision, digest_sha256: result.provenance.digest_sha256,
+            assessment_mode: result.mode, assessment_rating: rating, hypothesis_review: result.mode === 'agentic_soc' ? hypothesisReview : 'not_reviewed' });
+        }}>Record analyst feedback</EuiButton>
+      </>}
     </>}
   </>;
 }

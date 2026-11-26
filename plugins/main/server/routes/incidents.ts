@@ -220,6 +220,15 @@ export function registerIncidentRoutes(router: IRouter) {
       client(context).command(request.params.id, request.query.expected_revision, { kind, ...request.body })));
   }
 
+  router.post({ path: ROOT + '/{id}/record-ai-feedback', validate: { params, query, body: schema.object({
+    assessment_id: idSchema, assessed_revision: revisionSchema,
+    digest_sha256: schema.string({ minLength: 64, maxLength: 64 }),
+    assessment_mode: schema.oneOf([schema.literal('ai_review'), schema.literal('agentic_soc')]),
+    assessment_rating: schema.oneOf([schema.literal('useful'), schema.literal('partly_useful'), schema.literal('not_useful')]),
+    hypothesis_review: schema.oneOf([schema.literal('agree'), schema.literal('disagree'), schema.literal('not_reviewed')]),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'record-ai-feedback', ...request.body })));
+
   router.post({ path: ROOT + '/{id}/apply-playbook', validate: { params, query, body: schema.object({
     template_id: schema.string({ minLength: 1, maxLength: 64 }), version: revisionSchema,
   }) } }, async (context, request, response) => respond(response, () =>

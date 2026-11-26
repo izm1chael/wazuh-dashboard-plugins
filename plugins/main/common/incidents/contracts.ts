@@ -47,6 +47,7 @@ export type IndexerIncidentCommand =
   | { kind: 'add-note'; body: string }
   | { kind: 'create-task'; title: string }
   | { kind: 'complete-task' | 'reopen-task'; task_id: string }
+  | ({ kind: 'record-ai-feedback' } & AiFeedback)
   | { kind: 'apply-playbook'; template_id: string; version: number }
   | { kind: 'request-response'; type: ResponseIntent; scope: string; reason: string }
   | { kind: 'approve-response' | 'reject-response' | 'cancel-response'; response_id: string; reason: string }
@@ -179,4 +180,11 @@ export interface PlaybookPreview {
 }
 export interface PlaybookRun {
   template_id: string; version: number; applied_revision: number; applied_by: string; applied_at: string; task_ids: string[];
+}
+
+export type AiFeedbackRating = 'useful' | 'partly_useful' | 'not_useful';
+export type AiHypothesisReview = 'agree' | 'disagree' | 'not_reviewed';
+export interface AiFeedback {
+  assessment_id: string; assessed_revision: number; digest_sha256: string;
+  assessment_mode: 'ai_review' | 'agentic_soc'; assessment_rating: AiFeedbackRating; hypothesis_review: AiHypothesisReview;
 }
