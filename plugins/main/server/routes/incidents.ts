@@ -75,10 +75,10 @@ export function registerIncidentRoutes(router: IRouter) {
       trigger: schema.oneOf([schema.literal('created'), schema.literal('updated')]),
       minimum_severity: severitySchema, status: schema.oneOf(AUTOMATION_STATUSES.map(value => schema.literal(value))),
       minimum_findings: schema.number({ min: 0, max: 1000 }), unassigned_only: schema.boolean(),
-      required_tags: tagArray, actions: automationActions,
+      required_tags: tagArray, correlation_policy_id: schema.maybe(idSchema), actions: automationActions,
     }), { minSize: 1, maxSize: 10 }),
   }) } }, async (context, request, response) => respond(response, () => client(context).saveAutomation(
-    JSON.parse(JSON.stringify(request.body)))));
+    { ...request.body, rules: request.body.rules.map(rule => ({ ...rule, correlation_policy_id: rule.correlation_policy_id ?? null, actions: JSON.parse(JSON.stringify(rule.actions)) })) })));
   router.post({ path: '/indexer/incident-automation/read', validate: { body: schema.object({
     policy_id: idSchema, policy_version: revisionSchema,
   }) } }, async (context, request, response) => respond(response, () => client(context).readAutomation(request.body)));
