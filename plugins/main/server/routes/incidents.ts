@@ -60,6 +60,12 @@ async function respond<T extends object>(
 let historyRunning = false;
 let huntRunning = false;
 export function registerIncidentRoutes(router: IRouter) {
+  router.post({ path: '/indexer/incident-analytics/status', validate: { body: schema.object({
+    policy_id: idSchema, policy_version: revisionSchema,
+    from: schema.string({ minLength: 20, maxLength: 20 }),
+    until: schema.string({ minLength: 20, maxLength: 20 }),
+  }) } }, async (context, request, response) => respond(response, () => client(context).analyticsStatus(request.body)));
+
   const indicatorInput = schema.object({
     type: schema.oneOf(INDICATOR_TYPES.map(value => schema.literal(value))),
     value: schema.string({ minLength: 1, maxLength: 253 }),
