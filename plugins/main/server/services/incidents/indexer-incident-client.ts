@@ -1,7 +1,8 @@
-import type { IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import type { IncidentResponsePage, IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 import { validateCorrelationPolicy, validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
 import { validateMetricsQuery, validateMetricsReport } from '../../../common/incidents/metrics-validation';
+import { validateResponsePage } from '../../../common/incidents/response-validation';
 import { validateIncidentId } from './incident-id';
 
 /** Production routes must bind this transport to asCurrentUser, never an internal
@@ -46,6 +47,14 @@ function commandBody(command: IndexerIncidentCommand): object {
     case 'complete-task':
     case 'reopen-task':
       return { task_id: command.task_id };
+    case 'request-response':
+      return { type: command.type, scope: command.scope, reason: command.reason };
+    case 'approve-response':
+    case 'reject-response':
+    case 'cancel-response':
+      return { response_id: command.response_id, reason: command.reason };
+    case 'record-response-outcome':
+      return { response_id: command.response_id, outcome: command.outcome, reason: command.reason };
     default:
       throw new Error('Unknown incident command');
   }
@@ -58,6 +67,15 @@ function commandBody(command: IndexerIncidentCommand): object {
  */
 export class IndexerIncidentClient {
   constructor(private readonly transport: CurrentUserIncidentTransport) {}
+
+  async responses(id: string): Promise<IncidentResponsePage> {
+    validateIncidentId(id);
+    const { body } = await this.transport.request<IncidentResponsePage>({
+      method: 'GET', path: ROOT + '/' + encodeURIComponent(id) + '/responses',
+    });
+    validateResponsePage(body, id);
+    return body;
+  }
 
   async metrics(input: IncidentMetricsQuery): Promise<IncidentMetricsReport> {
     validateMetricsQuery(input);

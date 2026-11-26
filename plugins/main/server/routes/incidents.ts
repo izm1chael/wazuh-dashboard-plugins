@@ -1,5 +1,6 @@
 import { IRouter, RequestHandlerContext, OpenSearchDashboardsResponseFactory } from 'opensearch_dashboards/server';
 import { schema } from '@osd/config-schema';
+import { RESPONSE_INTENTS, RESPONSE_OUTCOMES } from '../../common/incidents/response-validation';
 import { IndexerIncidentClient, CurrentUserIncidentTransport, IndexerIncidentCommand, QueueQuery } from '../services/incidents/indexer-incident-client';
 import { IncidentDomainError, SEVERITIES, PRIORITIES, TLP_VALUES, CLASSIFICATIONS } from '../services/incidents/incident-domain';
 
@@ -120,6 +121,10 @@ export function registerIncidentRoutes(router: IRouter) {
   })));
 
   router.get({
+    path: ROOT + '/{id}/responses', validate: { params: schema.object({ id: idSchema }) },
+  }, async (context, request, response) => respond(response, () => client(context).responses(request.params.id)));
+
+  router.get({
     path: ROOT + '/{id}/collaboration',
     validate: { params: schema.object({ id: idSchema }), query: schema.object({
       before: schema.number({ min: 0, max: 2147483647, defaultValue: 0 }),
@@ -204,6 +209,25 @@ export function registerIncidentRoutes(router: IRouter) {
     }) } }, async (context, request, response) => respond(response, () =>
       client(context).command(request.params.id, request.query.expected_revision, { kind, ...request.body })));
   }
+
+  const responseReason = schema.string({ minLength: 1, maxLength: 2048 });
+  const responseId = schema.string({ minLength: 1, maxLength: 64 });
+  router.post({ path: ROOT + '/{id}/request-response', validate: { params, query, body: schema.object({
+    type: schema.oneOf(RESPONSE_INTENTS.map(value => schema.literal(value))),
+    scope: schema.string({ minLength: 1, maxLength: 512 }), reason: responseReason,
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'request-response', ...request.body })));
+
+  for (const kind of ['approve-response', 'reject-response', 'cancel-response'] as const) {
+    router.post({ path: ROOT + '/{id}/' + kind, validate: { params, query, body: schema.object({
+      response_id: responseId, reason: responseReason,
+    }) } }, async (context, request, response) => respond(response, () =>
+      client(context).command(request.params.id, request.query.expected_revision, { kind, ...request.body })));
+  }
+  router.post({ path: ROOT + '/{id}/record-response-outcome', validate: { params, query, body: schema.object({
+    response_id: responseId, outcome: schema.oneOf(RESPONSE_OUTCOMES.map(value => schema.literal(value))), reason: responseReason,
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'record-response-outcome', ...request.body })));
 
   for (const kind of ['attach-finding', 'detach-finding'] as const) {
     router.post({ path: ROOT + '/{id}/' + kind, validate: { params, query, body: schema.object({

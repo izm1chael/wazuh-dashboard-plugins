@@ -6,6 +6,8 @@ import type { IncidentApi } from './incident-api';
 const LABELS: Record<string, string> = {
   created: 'Incident created', assign: 'Assignment changed', start_triage: 'Triage started',
   activate: 'Investigation started', close: 'Incident closed', reopen: 'Incident reopened',
+  response_requested: 'Response requested', response_approved: 'Response approved', response_rejected: 'Response rejected',
+  response_cancelled: 'Response cancelled', response_outcome_reported: 'Manual response outcome reported',
   note_added: 'Note added', task_created: 'Task created', task_completed: 'Task completed', task_reopened: 'Task reopened',
   edit: 'Metadata changed', attach_finding: 'Finding attached', detach_finding: 'Finding detached',
 };

@@ -46,7 +46,10 @@ export type IndexerIncidentCommand =
   | { kind: 'attach-finding' | 'detach-finding'; index: string; document_id: string }
   | { kind: 'add-note'; body: string }
   | { kind: 'create-task'; title: string }
-  | { kind: 'complete-task' | 'reopen-task'; task_id: string };
+  | { kind: 'complete-task' | 'reopen-task'; task_id: string }
+  | { kind: 'request-response'; type: ResponseIntent; scope: string; reason: string }
+  | { kind: 'approve-response' | 'reject-response' | 'cancel-response'; response_id: string; reason: string }
+  | { kind: 'record-response-outcome'; response_id: string; outcome: ManualResponseOutcome; reason: string };
 
 export interface QueueCursor { time: number; id: string }
 export interface QueueQuery {
@@ -143,4 +146,18 @@ export interface IncidentMetricsReport {
   open_triage_breached: number; open_triage_unknown: number;
   creation_to_first_assignment: DurationMetric; mttt: DurationMetric; mttr: DurationMetric;
   creation_to_first_close: DurationMetric; mtti_available: false;
+}
+
+export type ResponseIntent = 'investigate_endpoint' | 'review_containment' | 'review_indicator_block' | 'collect_evidence';
+export type ManualResponseOutcome = 'completed' | 'failed' | 'not_performed';
+export type ResponseState = 'requested' | 'approved' | 'rejected' | 'cancelled' | 'reported_completed' | 'reported_failed' | 'reported_not_performed';
+export interface IncidentResponseRecord {
+  id: string; type: ResponseIntent; scope: string; reason: string; state: ResponseState;
+  requested_by: string; requested_at: string;
+  decided_by: string | null; decided_at: string | null; decision_reason: string | null;
+  finalized_by: string | null; finalized_at: string | null; final_reason: string | null;
+  execution_verified: false;
+}
+export interface IncidentResponsePage {
+  responses: IncidentResponseRecord[]; observed_revision: number; activity_pending: boolean; mode: 'manual_tracking_only';
 }
