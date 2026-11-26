@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { EuiBasicTable, EuiBasicTableColumn, EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSelect, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
-import { BehaviourObservation, ObservationPage, ObservationDecision, OBSERVATION_DECISIONS, validateObservationDay, validateObservationPage, validateObservationReview, validateReviewResult, validatePromotionResult } from '../../../../common/incidents/behaviour-observation-contract';
+import { BehaviourObservation, ObservationPage, ObservationDecision, EntityObservationPriority, entityObservationPriorities, OBSERVATION_DECISIONS, validateObservationDay, validateObservationPage, validateObservationReview, validateReviewResult, validatePromotionResult } from '../../../../common/incidents/behaviour-observation-contract';
 import { getHttp } from '../../../kibana-services';
 import { IncidentHuntPanel } from './incident-hunt-panel';
 
@@ -56,6 +56,15 @@ export function BehaviourObservationsPanel({back,openRelated}: {back:()=>void;op
     {name:'Review state',render:r=>label(r.state)},
     {name:'Action',render:r=><EuiButtonEmpty disabled={busy} onClick={()=>{resetSelection();setSelected(r.id);}}>Inspect</EuiButtonEmpty>}
   ];
+  const priorityColumns:Array<EuiBasicTableColumn<EntityObservationPriority>>=[
+    {name:'Exact entity',render:r=>r.field+': '+r.value},
+    {field:'publisher',name:'Publisher'},
+    {field:'observed_rules',name:'Observed rules'},
+    {field:'elevated_rules',name:'Elevated'},
+    {field:'newly_observed_rules',name:'Novelty'},
+    {field:'awaiting_review',name:'Awaiting review'},
+    {field:'awaiting_promotion',name:'Awaiting promotion'},
+  ];
   return <>
     <EuiButtonEmpty onClick={back}>Back to incidents</EuiButtonEmpty>
     <EuiTitle size='l'><h1>Behaviour observation review</h1></EuiTitle>
@@ -66,6 +75,11 @@ export function BehaviourObservationsPanel({back,openRelated}: {back:()=>void;op
     {error&&<EuiCallOut title='Review unavailable' color='warning'>{error}</EuiCallOut>}
     {page&&<>
       <EuiText size='s'>{page.count} recorded observations; {page.rows.filter(r=>r.state==='unreviewed').length} awaiting review; {page.rows.filter(r=>r.state==='escalation_requested').length} awaiting promotion. A missing record does not prove a policy ran or activity was absent.</EuiText>
+      <EuiTitle size='s'><h2>Entity review prioritisation</h2></EuiTitle>
+      <EuiText size='s'>Grouped by exact publisher, field and literal. Counts distinct rule observations, not distinct attacks or summed findings. Sorted by outstanding analyst work and flagged rules; not a risk score.</EuiText>
+      <EuiBasicTable<EntityObservationPriority> items={entityObservationPriorities(page)} columns={priorityColumns} itemId='key' noItemsMessage='No recorded entities'/>
+      <EuiSpacer size='m'/>
+      <EuiTitle size='s'><h2>Individual observations</h2></EuiTitle>
       <EuiBasicTable<BehaviourObservation> items={page.rows} columns={columns} itemId='id' noItemsMessage='No observations recorded for this day'/>
     </>}
     {row&&<EuiPanel hasBorder hasShadow={false}>
