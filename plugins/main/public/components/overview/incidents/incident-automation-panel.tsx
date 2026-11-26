@@ -10,7 +10,7 @@ const options = (values: readonly string[]) => values.map(value => ({ value, tex
 const optional = (values: readonly string[]) => [{ value: '', text: 'No action' }, ...options(values)];
 const list = (value: string) => value.split(/[\s,]+/).filter(Boolean);
 const fresh = (): AutomationRule => ({ id: '', trigger: 'created', minimum_severity: 'informational', status: 'any_open',
-  minimum_findings: 0, unassigned_only: false, required_tags: [], actions: {} });
+  minimum_findings: 0, unassigned_only: false, required_tags: [], correlation_policy_id: null, actions: {} });
 
 export function IncidentAutomationPanel({ back }: { back: () => void }) {
   const [id, setId] = useState('');
@@ -99,7 +99,7 @@ export function IncidentAutomationPanel({ back }: { back: () => void }) {
   };
   const editorDirty = editing !== undefined || !!rule.id || Object.keys(rule.actions).length > 0 ||
     !!requiredTags || !!addTags || minimum !== '0' || rule.trigger !== 'created' || rule.minimum_severity !== 'informational' ||
-    rule.status !== 'any_open' || rule.unassigned_only;
+    rule.status !== 'any_open' || rule.unassigned_only || rule.correlation_policy_id !== null;
   return <>
     <EuiButtonEmpty onClick={back} disabled={busy}>Back to incidents</EuiButtonEmpty>
     <EuiTitle size='l'><h1>Incident automation rules</h1></EuiTitle>
@@ -128,7 +128,7 @@ export function IncidentAutomationPanel({ back }: { back: () => void }) {
     {rules.map((row, index) => <EuiPanel key={row.id} hasBorder hasShadow={false} paddingSize='s'>
       <EuiText size='s'><strong>{index + 1}. {row.id}</strong> · {row.trigger} · {row.status} · severity at least {row.minimum_severity}
         · minimum findings {row.minimum_findings}{row.unassigned_only ? ' · unassigned only' : ''}
-        <p>Required tags: {row.required_tags.join(', ') || 'None'}</p>
+        <p>Required tags: {row.required_tags.join(', ') || 'None'} · Analytics policy: {row.correlation_policy_id ?? 'Any'}</p>
         <p>Actions: {Object.entries(row.actions).map(([k,v]) => k.replace(/_/g, ' ') + ': ' + String(v)).join(' · ')}</p></EuiText>
       <EuiButtonEmpty disabled={busy || editorDirty} onClick={() => edit(index)}>Edit</EuiButtonEmpty>
       <EuiButtonEmpty disabled={busy || editorDirty || index === 0} onClick={() => move(index,-1)}>Move up</EuiButtonEmpty>
@@ -148,6 +148,7 @@ export function IncidentAutomationPanel({ back }: { back: () => void }) {
     <EuiCheckbox id='automation-unassigned' label='Unassigned incidents only' checked={rule.unassigned_only} disabled={busy}
       onChange={e => setRule({...rule,unassigned_only:e.target.checked})} />
     <EuiFormRow label='Required tags (comma separated)'><EuiFieldText value={requiredTags} maxLength={1625} disabled={busy} onChange={e => setRequiredTags(e.target.value)} /></EuiFormRow>
+    <EuiFormRow label='Originating analytics policy UUID (optional)'><EuiFieldText value={rule.correlation_policy_id ?? ''} maxLength={36} disabled={busy} onChange={e => setRule({...rule,correlation_policy_id:e.target.value || null})} /></EuiFormRow>
     <EuiFormRow label='Assign to exact username (optional)'><EuiFieldText value={rule.actions.assign_to ?? ''} maxLength={1024} disabled={busy} onChange={e => action('assign_to',e.target.value)} /></EuiFormRow>
     <EuiFormRow label='Raise severity to'><EuiSelect value={rule.actions.raise_severity ?? ''} options={optional(SEVERITIES)} disabled={busy}
       onChange={e => action('raise_severity',e.target.value as AutomationActions['raise_severity'] | '')} /></EuiFormRow>
