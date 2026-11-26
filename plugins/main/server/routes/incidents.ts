@@ -1,7 +1,7 @@
 import { IRouter, RequestHandlerContext, OpenSearchDashboardsResponseFactory } from 'opensearch_dashboards/server';
 import { schema } from '@osd/config-schema';
 import { IndexerIncidentClient, CurrentUserIncidentTransport, IndexerIncidentCommand, QueueQuery } from '../services/incidents/indexer-incident-client';
-import { SEVERITIES, PRIORITIES, TLP_VALUES, CLASSIFICATIONS } from '../services/incidents/incident-domain';
+import { IncidentDomainError, SEVERITIES, PRIORITIES, TLP_VALUES, CLASSIFICATIONS } from '../services/incidents/incident-domain';
 
 const ROOT = '/indexer/incidents';
 const idSchema = schema.string({ minLength: 36, maxLength: 36 });
@@ -16,7 +16,7 @@ function client(context: RequestHandlerContext): IndexerIncidentClient {
   const transport = context.core.opensearch.client.asCurrentUser.transport;
   // Explicitly use the original user; no internal/admin fallback.
   const adapter: CurrentUserIncidentTransport = {
-    async request<T>(params) {
+    async request<T>(params: Parameters<CurrentUserIncidentTransport['request']>[0]) {
       const result = await transport.request(params);
       return { body: result.body as T };
     },
@@ -32,7 +32,7 @@ async function respond<T extends object>(
     return response.ok({ body: await work() });
   } catch (error) {
     const e = error as { meta?: { statusCode?: number }; statusCode?: number };
-    const status = e?.meta?.statusCode ?? e?.statusCode;
+    const status = error instanceof IncidentDomainError ? (error.code === 'conflict' ? 409 : 400) : e?.meta?.statusCode ?? e?.statusCode;
     // Do not forward arbitrary indexer errors or request bodies to the browser.
     const messages: Record<number, string> = {
       400: 'Invalid incident request.',

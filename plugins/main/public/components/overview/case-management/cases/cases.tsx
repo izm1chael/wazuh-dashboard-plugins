@@ -20,7 +20,7 @@ export const CaseManagementCases = () => {
   const history = useHistory();
   return (
     <>
-      {getCapabilities().wazuh?.experimentalIncidents && (
+      {getCapabilities()?.wazuh?.experimentalIncidents && (
         <>
           <EuiButton onClick={() => history.push('/incidents')}>Open experimental incidents</EuiButton>
           <EuiSpacer size='m' />

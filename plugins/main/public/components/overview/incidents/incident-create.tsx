@@ -3,7 +3,17 @@ import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiSel
 import type { CreateIncident, Severity } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
 
-export function IncidentCreate({ api, back, open }: { api: IncidentApi; back: () => void; open: (id: string) => void }) {
+function newRequestId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
+}
+
+export function IncidentCreate({ api, back, open, generateId = newRequestId }: {
+  api: IncidentApi; back: () => void; open: (id: string) => void; generateId?: () => string;
+}) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<Severity>('medium');
@@ -21,7 +31,7 @@ export function IncidentCreate({ api, back, open }: { api: IncidentApi; back: ()
     setError(false);
     try {
       if (!attempt.current) {
-        attempt.current = { key: crypto.randomUUID(), payload: { title, description, severity } };
+        attempt.current = { key: generateId(), payload: { title, description, severity } };
         setAttempted(true);
       }
       const result = await api.create(attempt.current.payload, attempt.current.key);

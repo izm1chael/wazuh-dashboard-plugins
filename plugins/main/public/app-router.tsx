@@ -119,7 +119,7 @@ export const Application = withGuardAsync(
       <main className='wz-app-main'>
         <WzAppHeading />
         <Switch>
-          {getCapabilities().wazuh?.experimentalIncidents && (
+          {getCapabilities()?.wazuh?.experimentalIncidents && (
             <Route path='/incidents/:incidentId?' exact component={IncidentWorkspace} />
           )}
           <Route

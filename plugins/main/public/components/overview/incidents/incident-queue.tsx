@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  EuiBasicTable, EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFlexGroup, EuiFlexItem,
+  EuiBasicTable, EuiBasicTableColumn, EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFlexGroup, EuiFlexItem,
   EuiFormRow, EuiSelect, EuiSpacer, EuiText, EuiTitle,
 } from '@elastic/eui';
 import type { IncidentSummary, Queue, QueueCursor, QueuePage, QueueQuery, Severity } from '../../../../common/incidents/contracts';
@@ -48,7 +48,7 @@ export function IncidentQueue({ api, open, create }: {
       ...(owner.trim() ? { owner: owner.trim() } : {}) });
   }
 
-  const columns = [
+  const columns: Array<EuiBasicTableColumn<IncidentSummary>> = [
     { field: 'title', name: 'Incident', render: (_: string, item: IncidentSummary) => (
       <EuiButtonEmpty onClick={() => open(item.id)}>{item.title}</EuiButtonEmpty>
     ) },
@@ -85,7 +85,7 @@ export function IncidentQueue({ api, open, create }: {
       <EuiFlexItem><EuiText size='s'>Page {cursors.length} · Live results can change between pages</EuiText></EuiFlexItem>
       <EuiFlexItem grow={false}><EuiButtonEmpty disabled={loading} onClick={() => { setCursors([undefined]); setRefresh(value => value + 1); }}>Refresh</EuiButtonEmpty></EuiFlexItem>
       <EuiFlexItem grow={false}><EuiButtonEmpty disabled={loading || cursors.length === 1} onClick={() => setCursors(items => items.slice(0, -1))}>Previous</EuiButtonEmpty></EuiFlexItem>
-      <EuiFlexItem grow={false}><EuiButtonEmpty disabled={loading || !page?.next} onClick={() => { if (page?.next) setCursors(items => [...items, page.next]); }}>Next</EuiButtonEmpty></EuiFlexItem>
+      <EuiFlexItem grow={false}><EuiButtonEmpty disabled={loading || !page?.next} onClick={() => { const next = page?.next; if (next) setCursors(items => [...items, next]); }}>Next</EuiButtonEmpty></EuiFlexItem>
     </EuiFlexGroup>
   </>;
 }
