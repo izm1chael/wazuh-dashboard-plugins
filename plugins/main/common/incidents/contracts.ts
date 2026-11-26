@@ -1,3 +1,4 @@
+import type { HuntInput } from './hunt-contract';
 /** Contract shared by the dashboard client and experimental workspace. */
 export type Severity = 'informational' | 'low' | 'medium' | 'high' | 'critical';
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
@@ -60,6 +61,8 @@ export type IndexerIncidentCommand =
   | ({ kind: 'create-tuning-proposal' } & TuningProposalInput)
   | { kind: 'withdraw-tuning-proposal'; proposal_id: string; reason: string }
   | { kind: 'review-tuning-proposal'; proposal_id: string; decision: 'accepted_for_review' | 'rejected'; fixture_sha256: string; reason: string }
+  | { kind: 'save-hunt-bookmark'; label: string; query: HuntInput }
+  | { kind: 'withdraw-hunt-bookmark'; bookmark_id: string; reason: string }
   | { kind: 'start-workflow'; template_id: WorkflowTemplate; version: 1; scope: string; reason: string }
   | { kind: 'advance-workflow'; run_id: string }
   | { kind: 'cancel-workflow'; run_id: string; reason: string }
@@ -132,7 +135,12 @@ export interface EvidenceArtifact {
   recorded_by: string; recorded_at: string; origin: 'analyst_attested_external_artifact';
   state: 'recorded' | 'withdrawn'; withdrawn_by: string | null; withdrawn_at: string | null; withdrawal_reason: string | null;
 }
+export interface HuntBookmark {
+  id: string; label: string; query: HuntInput; created_by: string; created_at: string; state: 'saved'|'withdrawn';
+  withdrawn_by: string|null; withdrawn_at: string|null; withdrawal_reason: string|null; withdrawn_revision: number|null;
+}
 export interface CollaborationPage {
+  hunt_bookmarks?: HuntBookmark[];
   incident_relations?: IncidentRelation[]; evidence_register?: EvidenceArtifact[];
   playbooks?: PlaybookPreview[]; playbook_runs?: PlaybookRun[]; tuning_proposals?: TuningProposal[];
   notes: IncidentNote[]; tasks: IncidentTask[]; observed_revision: number; activity_pending: boolean; next_before?: number;
