@@ -52,12 +52,12 @@ const rank=(r:BehaviourObservation)=>r.state==='unreviewed'?(r.assessment.classi
 export function validateObservationPage(page:ObservationPage,day:string):ObservationPage {
   if(!page||!exact(page,['scope','day','rows','count'])||page.scope!=='shared_soc_observation_metadata'||page.day!==day||
     !Array.isArray(page.rows)||page.rows.length>50||page.count!==page.rows.length)return fail();
-  let previousRank=-1,previousId='';const seen=new Set<string>();
+  let previousRank=-1,previousId='';const seen=new Set<string>(),scopes=new Set<string>();
   for(const row of page.rows){
     validateObservation(row);
-    const r=rank(row);
-    if(row.query.day!==day||seen.has(row.id)||r<previousRank||(r===previousRank&&row.id<=previousId))return fail();
-    seen.add(row.id);previousRank=r;previousId=row.id;
+    const r=rank(row),scope=JSON.stringify([row.actor,row.query.field,row.query.value,row.query.rule_uuid]);
+    if(row.query.day!==day||scopes.has(scope)||seen.has(row.id)||r<previousRank||(r===previousRank&&row.id<=previousId))return fail();
+    seen.add(row.id);scopes.add(scope);previousRank=r;previousId=row.id;
   }
   return page;
 }
