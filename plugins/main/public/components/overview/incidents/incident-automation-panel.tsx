@@ -78,7 +78,9 @@ export function IncidentAutomationPanel({ back }: { back: () => void }) {
           setPreview(result);
         }
       } else {
-        const body = await getHttp().post<unknown>(ROOT + operation, { body: JSON.stringify(operation === 'save' ? policy : expected) });
+        const wire = operation === 'save' && policy ? { ...policy, rules: policy.rules.map(({ correlation_policy_id, ...item }) =>
+          ({ ...item, ...(correlation_policy_id === null ? {} : { correlation_policy_id }) })) } : expected;
+        const body = await getHttp().post<unknown>(ROOT + operation, { body: JSON.stringify(wire) });
         const result = operation === 'save' ? validateAutomationSave(body, policy!).saved : validateSavedAutomation(body, expected);
         if (generation.current === run) {
           setSaved(result); setRules(result.policy.rules); resetEditor();
