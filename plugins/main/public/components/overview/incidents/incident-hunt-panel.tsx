@@ -5,7 +5,7 @@ import { getHttp } from '../../../kibana-services';
 import type { IndexerIncidentCommand } from '../../../../common/incidents/contracts';
 
 type Props = {
-  initial?: { field: HuntField; value: string };
+  initial?: { field: HuntField; value?: string; values?: string[]; from?: string; until?: string };
   disabled?: boolean;
   attach?: (command: IndexerIncidentCommand) => Promise<void>;
   back?: () => void;
@@ -14,9 +14,9 @@ type Run = { input: HuntInput; report: HuntReport };
 
 export function IncidentHuntPanel({ initial, disabled = false, attach, back }: Props) {
   const [field, setField] = useState<HuntField>(initial?.field ?? 'source.ip');
-  const [values, setValues] = useState(initial?.value ?? '');
-  const [until, setUntil] = useState(() => new Date().toISOString());
-  const [from, setFrom] = useState(() => new Date(Date.parse(until) - 86400000).toISOString());
+  const [values, setValues] = useState(initial?.values?.join('\n') ?? initial?.value ?? '');
+  const [until, setUntil] = useState(() => initial?.until ?? new Date().toISOString());
+  const [from, setFrom] = useState(() => initial?.from ?? new Date(Date.parse(until) - 86400000).toISOString());
   const [run, setRun] = useState<Run>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
