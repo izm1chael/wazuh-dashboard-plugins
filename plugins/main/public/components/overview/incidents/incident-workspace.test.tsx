@@ -19,6 +19,7 @@ const item: IncidentSummary = {
 
 function setup() {
   const api = {
+    issuedResponses: jest.fn().mockResolvedValue({ issued_responses: [], revision: 1, visible_finding_count: 0, mode: 'exact_visible_finding_page_issued_only' }),
     responses: jest.fn().mockResolvedValue({ responses: [], observed_revision: 1, activity_pending: false, mode: 'manual_tracking_only' }),
     collaboration: jest.fn().mockResolvedValue({ notes: [], tasks: [], observed_revision: 1, activity_pending: false }),
     activity: jest.fn().mockResolvedValue({ events: [], observed_revision: 1, activity_pending: false }),

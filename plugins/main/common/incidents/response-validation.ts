@@ -1,4 +1,4 @@
-import type { IncidentResponsePage, IncidentResponseRecord } from './contracts';
+import type { IncidentResponsePage, IncidentResponseRecord, IssuedResponsePage, FindingReference } from './contracts';
 
 export const RESPONSE_INTENTS = ['investigate_endpoint', 'review_containment', 'review_indicator_block', 'collect_evidence'] as const;
 export const RESPONSE_OUTCOMES = ['completed', 'failed', 'not_performed'] as const;
@@ -36,5 +36,33 @@ export function validateResponsePage(body: IncidentResponsePage, id: string): vo
       !body.responses.every(row => valid(row, id, body.observed_revision)) ||
       new Set(body.responses.map(row => row.id)).size !== body.responses.length) {
     throw new Error('Invalid incident response projection');
+  }
+}
+
+const nullableText = (value: unknown) => value === null || text(value, 1024);
+const refValid = (ref: FindingReference) => !!ref && Object.keys(ref).length === 2 &&
+  text(ref.index, 255) && text(ref.document_id, 512);
+export function validateIssuedResponsePage(body: IssuedResponsePage, offset: number, limit: number, expectedRevision: number): void {
+  const allowed = ['index', 'document_id', 'finding', 'issued_at', 'name', 'type', 'location', 'configured_agent_id',
+    'source_agent_id', 'state', 'execution_verified'];
+  if (!body || body.mode !== 'exact_visible_finding_page_issued_only' ||
+      !Number.isSafeInteger(body.revision) || body.revision < 1 ||
+      (expectedRevision > 0 && body.revision !== expectedRevision) ||
+      !Number.isSafeInteger(body.visible_finding_count) || body.visible_finding_count < 0 || body.visible_finding_count > limit ||
+      (body.next_offset !== undefined && (!Number.isSafeInteger(body.next_offset) || body.next_offset !== offset + limit || body.next_offset > 1000)) ||
+      !Array.isArray(body.issued_responses) || body.issued_responses.length > 100 ||
+      !body.issued_responses.every(row => !!row && Object.keys(row).length === allowed.length &&
+        Object.keys(row).every(key => allowed.includes(key)) && text(row.index, 255) && text(row.document_id, 512) &&
+        /^(?:\.ds-)?wazuh-active-responses/.test(row.index) &&
+        refValid(row.finding) && /^(?:\.ds-)?wazuh-findings-v5-/.test(row.finding.index) &&
+        (row.issued_at === null || time(row.issued_at)) &&
+        [row.name, row.type, row.location, row.configured_agent_id, row.source_agent_id].every(nullableText) &&
+        row.state === 'issued_only' && row.execution_verified === false)) {
+    throw new Error('Invalid issued response projection');
+  }
+  const identities = body.issued_responses.map(row => JSON.stringify([row.index, row.document_id]));
+  const sourceIdentities = new Set(body.issued_responses.map(row => JSON.stringify([row.finding.index, row.finding.document_id])));
+  if (new Set(identities).size !== identities.length || sourceIdentities.size > body.visible_finding_count) {
+    throw new Error('Issued response identities do not reconcile');
   }
 }

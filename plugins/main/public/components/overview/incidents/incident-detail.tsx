@@ -5,6 +5,7 @@ import type { IncidentApi } from './incident-api';
 import { IncidentActivityPanel } from './incident-activity-panel';
 import { IncidentFindingsPanel } from './incident-findings-panel';
 import { IncidentCollaborationPanel } from './incident-collaboration-panel';
+import { IssuedResponsesPanel } from './issued-responses-panel';
 import { IncidentResponsePanel } from './incident-response-panel';
 import { IncidentMetadataEditor } from './incident-metadata-editor';
 
@@ -114,6 +115,8 @@ export function IncidentDetail({ api, id, back }: { api: IncidentApi; id: string
       <IncidentCollaborationPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed'} command={command} />
       <EuiSpacer size='l' />
       <IncidentResponsePanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} disabled={disabled || incident.status === 'closed'} command={command} />
+      <EuiSpacer size='l' />
+      <IssuedResponsesPanel key={id + ':' + incident.revision + ':' + refresh} api={api} incident={incident} />
       <EuiSpacer size='l' />
       <IncidentActivityPanel key={id + ':' + incident.revision + ':' + refresh} api={api} id={id} />
     </>}

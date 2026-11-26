@@ -161,3 +161,12 @@ export interface IncidentResponseRecord {
 export interface IncidentResponsePage {
   responses: IncidentResponseRecord[]; observed_revision: number; activity_pending: boolean; mode: 'manual_tracking_only';
 }
+
+export interface IssuedResponseRecord extends FindingReference {
+  finding: FindingReference; issued_at: string | null; name: string | null; type: string | null; location: string | null;
+  configured_agent_id: string | null; source_agent_id: string | null; state: 'issued_only'; execution_verified: false;
+}
+export interface IssuedResponsePage {
+  issued_responses: IssuedResponseRecord[]; revision: number; visible_finding_count: number;
+  next_offset?: number; mode: 'exact_visible_finding_page_issued_only';
+}

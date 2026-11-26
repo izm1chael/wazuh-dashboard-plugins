@@ -1,9 +1,10 @@
 import { getHttp } from '../../../kibana-services';
-import type { IncidentResponsePage, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IncidentSummary, IndexerIncidentCommand, IndexerIncidentResult, QueuePage, QueueQuery } from '../../../../common/incidents/contracts';
+import type { IssuedResponsePage, IncidentResponsePage, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IncidentSummary, IndexerIncidentCommand, IndexerIncidentResult, QueuePage, QueueQuery } from '../../../../common/incidents/contracts';
 
 const ROOT = '/indexer/incidents';
 
 export interface IncidentApi {
+  issuedResponses(id: string, offset?: number, revision?: number): Promise<IssuedResponsePage>;
   responses(id: string): Promise<IncidentResponsePage>;
   collaboration(id: string, before?: number): Promise<CollaborationPage>;
   activity(id: string, before?: number): Promise<ActivityPage>;
@@ -16,6 +17,9 @@ export interface IncidentApi {
 
 /** Use the dashboard's authenticated HTTP client, not the manager API or direct index writes. */
 export const incidentApi: IncidentApi = {
+  async issuedResponses(id, offset = 0, revision = 0) {
+    return getHttp().get<IssuedResponsePage>(ROOT + '/' + encodeURIComponent(id) + '/issued-responses', { query: { offset, expected_revision: revision } });
+  },
   async responses(id) {
     return getHttp().get<IncidentResponsePage>(ROOT + '/' + encodeURIComponent(id) + '/responses');
   },

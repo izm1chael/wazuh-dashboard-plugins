@@ -1,8 +1,8 @@
-import type { IncidentResponsePage, IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import type { IssuedResponsePage, IncidentResponsePage, IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 import { validateCorrelationPolicy, validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
 import { validateMetricsQuery, validateMetricsReport } from '../../../common/incidents/metrics-validation';
-import { validateResponsePage } from '../../../common/incidents/response-validation';
+import { validateResponsePage, validateIssuedResponsePage } from '../../../common/incidents/response-validation';
 import { validateIncidentId } from './incident-id';
 
 /** Production routes must bind this transport to asCurrentUser, never an internal
@@ -67,6 +67,20 @@ function commandBody(command: IndexerIncidentCommand): object {
  */
 export class IndexerIncidentClient {
   constructor(private readonly transport: CurrentUserIncidentTransport) {}
+
+  async issuedResponses(id: string, offset = 0, expectedRevision = 0, limit = 25): Promise<IssuedResponsePage> {
+    validateIncidentId(id);
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000 ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 25 ||
+        !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || expectedRevision > 2147483647 ||
+        (offset > 0 && expectedRevision === 0)) throw new Error('Invalid issued response page');
+    const { body } = await this.transport.request<IssuedResponsePage>({
+      method: 'GET', path: ROOT + '/' + encodeURIComponent(id) + '/issued-responses',
+      querystring: { offset, expected_revision: expectedRevision, limit },
+    });
+    validateIssuedResponsePage(body, offset, limit, expectedRevision);
+    return body;
+  }
 
   async responses(id: string): Promise<IncidentResponsePage> {
     validateIncidentId(id);
@@ -302,7 +316,8 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
       !Number.isSafeInteger(incident.finding_count) || incident.finding_count < 0 ||
       Object.prototype.hasOwnProperty.call(incident, 'pending_activity') ||
       Object.prototype.hasOwnProperty.call(incident, 'findings') ||
-      Object.prototype.hasOwnProperty.call(incident, 'create_request_hash')) {
+      Object.prototype.hasOwnProperty.call(incident, 'create_request_hash') ||
+      Object.prototype.hasOwnProperty.call(incident, 'response_requests')) {
     throw new Error('Invalid incident projection; reload before retrying');
   }
 }
