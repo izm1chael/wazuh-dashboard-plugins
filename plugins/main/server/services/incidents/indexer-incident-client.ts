@@ -22,6 +22,11 @@ const ROOT = '/_plugins/_setup/incidents';
 
 function commandBody(command: IndexerIncidentCommand): object {
   switch (command.kind) {
+    case 'offer-handover':
+      return { target: command.target, reason: command.reason };
+    case 'accept-handover':
+    case 'cancel-handover':
+      return { reason: command.reason };
     case 'assign-self':
     case 'unassign':
     case 'start-triage':
