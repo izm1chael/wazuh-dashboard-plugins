@@ -12,14 +12,17 @@ type Props = {
   attach?: (command: IndexerIncidentCommand) => Promise<void>;
   back?: () => void;
   openRelated?: (id: string) => void;
+  saveBookmark?: (command: IndexerIncidentCommand) => Promise<void>;
 };
 type Run = { input: HuntInput; report: HuntReport; investigation?: EntityInvestigation };
 
-export function IncidentHuntPanel({ initial, disabled = false, attach, back, openRelated }: Props) {
+export function IncidentHuntPanel({ initial, disabled = false, attach, back, openRelated, saveBookmark }: Props) {
   const [field, setField] = useState<HuntField>(initial?.field ?? 'source.ip');
   const [values, setValues] = useState(initial?.values?.join('\n') ?? initial?.value ?? '');
   const [until, setUntil] = useState(() => initial?.until ?? new Date().toISOString());
   const [from, setFrom] = useState(() => initial?.from ?? new Date(Date.parse(until) - 86400000).toISOString());
+  const [bookmarkLabel, setBookmarkLabel] = useState('');
+  const [shareConfirmed, setShareConfirmed] = useState(false);
   const [definition, setDefinition] = useState('');
   const [definitionError, setDefinitionError] = useState(false);
   const [run, setRun] = useState<Run>();
@@ -32,7 +35,7 @@ export function IncidentHuntPanel({ initial, disabled = false, attach, back, ope
   try {
     input = validateHunt({ field, values: values.split(/\r?\n/).filter(v => v.length > 0), from, until });
   } catch (_) { /* invalid form */ }
-  const reset = () => { setRun(undefined); setError(''); };
+  const reset = () => { setRun(undefined); setError(''); setShareConfirmed(false); };
   async function search(investigate = false) {
     if (!input || disabled || active.current) return;
     const request = input;
@@ -90,6 +93,14 @@ export function IncidentHuntPanel({ initial, disabled = false, attach, back, ope
       <EuiButtonEmpty disabled={locked || !definition} onClick={()=>{setDefinition('');setDefinitionError(false);}}>Clear definition</EuiButtonEmpty>
       {definitionError && <EuiCallOut color='warning' title='Invalid or unsupported hunt definition' />}
     </details>
+    {saveBookmark && <details><summary>Save query to this incident</summary>
+      <EuiText size='s'>The exact field, values and time range become shared incident metadata and remain in audit history after withdrawal. Only save non-restricted values. No query results are stored.</EuiText>
+      <EuiFormRow label='Bookmark label'><EuiFieldText value={bookmarkLabel} maxLength={128} disabled={locked}
+        onChange={e=>{setBookmarkLabel(e.target.value);setShareConfirmed(false);}} /></EuiFormRow>
+      <label><input type='checkbox' checked={shareConfirmed} disabled={locked} onChange={e=>setShareConfirmed(e.target.checked)} /> I confirm these query values may be shared with case readers.</label>
+      <EuiButtonEmpty disabled={locked || !input || !shareConfirmed || !bookmarkLabel.trim() || bookmarkLabel!==bookmarkLabel.trim() || /[\x00-\x1f\x7f-\x9f]/.test(bookmarkLabel)}
+        onClick={()=>{if(input && shareConfirmed){setShareConfirmed(false);void saveBookmark({kind:'save-hunt-bookmark',label:bookmarkLabel,query:input});}}}>Save case bookmark</EuiButtonEmpty>
+    </details>}
     {!input && <EuiText size='s'>Enter valid unique literal values and a UTC range of no more than seven days.</EuiText>}
     {error && <EuiCallOut color='warning' title='Hunt not completed'>{error}</EuiCallOut>}
     {run && <>
