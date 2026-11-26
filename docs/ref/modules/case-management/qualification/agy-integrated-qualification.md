@@ -23,3 +23,7 @@ Return a single consolidated receipt with exact SHAs, build commands/results, un
 ## Handover and investigation follow-on gate
 
 Include the later handover and investigation commits in both checkout SHAs. Execute the five additional disposable checks in ../incident-handover-investigation.md. Verify additive mapping upgrade, exact authenticated recipient acceptance and personal queue scope, bounded live timeline coverage and rejection of partial/stale responses. Record full build and role evidence; no qualification by mock results alone.
+
+## Investigation register follow-on gate
+
+Include both forks' latest investigation-register commits. Execute all five qualification groups in ../incident-investigation-register.md, including additive mapping upgrades, actual collaboration role matrix, local file digest network inspection, and malformed projection tests. Treat relationship assertions and external artifact attestations as analyst metadata, not verified evidence. Record exact SHAs and results in the consolidated qualification receipt.
