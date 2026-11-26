@@ -5,7 +5,7 @@ import type { EvidenceArtifact } from '../../../../common/incidents/contracts';
 const MAX_BYTES = 32 * 1024 * 1024;
 
 /** A browser-only comparison; neither file bytes nor its computed digest are sent to an API. */
-export function LocalEvidenceVerifier({ evidence }: { evidence: EvidenceArtifact }) {
+export function LocalEvidenceVerifier({ evidence, onBusy }: { evidence: EvidenceArtifact; onBusy: (busy: boolean) => void }) {
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<'match' | 'mismatch' | 'unavailable' | 'too_large'>();
@@ -19,7 +19,7 @@ export function LocalEvidenceVerifier({ evidence }: { evidence: EvidenceArtifact
     if (file.size > MAX_BYTES) { setResult('too_large'); return; }
     if (!window.crypto?.subtle) { setResult('unavailable'); return; }
     const run = ++generation.current;
-    working.current = true; setBusy(true);
+    working.current = true; setBusy(true); onBusy(true);
     try {
       const bytes = await file.arrayBuffer();
       if (generation.current !== run) return;
@@ -30,7 +30,7 @@ export function LocalEvidenceVerifier({ evidence }: { evidence: EvidenceArtifact
       if (generation.current === run) setResult('unavailable');
     } finally {
       working.current = false;
-      if (generation.current === run) setBusy(false);
+      if (generation.current === run) { setBusy(false); onBusy(false); }
     }
   }
 
