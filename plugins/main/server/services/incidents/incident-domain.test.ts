@@ -37,6 +37,15 @@ describe('first-class incident domain', () => {
     expect(() => apply(create(), { kind: 'start_triage' }, 'analyst', T1)).toThrow(/Assign/);
   });
 
+  test('allows returning a new incident to the queue but not abandoning an investigation', () => {
+    const assigned = apply(create(), { kind: 'assign', owner: 'analyst' }, 'supervisor', T1);
+    const unassigned = apply(assigned, { kind: 'assign', owner: null }, 'supervisor', T2);
+    expect(unassigned.owner).toBeNull();
+    expect(unassigned.first_assigned_at).toBe(T1);
+    const triage = apply(assigned, { kind: 'start_triage' }, 'analyst', T2);
+    expect(() => apply(triage, { kind: 'assign', owner: null }, 'supervisor', T3)).toThrow(/retain an owner/);
+  });
+
   test('records classified closure and reopening without erasing first closure or creation', () => {
     const assigned = apply(create(), { kind: 'assign', owner: 'analyst' }, 'analyst', T1);
     const triage = apply(assigned, { kind: 'start_triage' }, 'analyst', T2);

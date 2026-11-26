@@ -157,6 +157,7 @@ export function applyIncidentCommand(current: Incident, command: IncidentCommand
     case 'assign': {
       const owner = command.owner === null ? null : requiredText(command.owner, 1024, 'owner');
       if (current.owner === owner) return conflict('Incident assignment did not change');
+      if (owner === null && current.status !== 'new') return conflict('In-progress incidents must retain an owner');
       set('owner', owner);
       if (owner !== null && current.first_assigned_at === null) set('first_assigned_at', now);
       break;

@@ -19,7 +19,7 @@ This is an independent fork plan, not an upstream roadmap. Do not open upstream 
 
 ## Foundation contract
 
-The domain module is not a public endpoint. It returns an incident with a pending activity event, atomically persisted with the incident mutation. The persistence adapter must use OpenSearch compare-and-set and create-only activity writes; a pending event must not be discarded. Retrying a failed request requires distinguishing committed state from activity-delivery failure. Until access control and delivery are implemented and integration-tested, do not provision or expose the new API.
+The domain module is not a public endpoint. It returns an incident with a pending activity event, atomically persisted with the incident mutation. The persistence adapter must use OpenSearch compare-and-set and create-only activity writes; a pending event must not be discarded. Retrying a failed request requires distinguishing committed state from activity-delivery failure. The internal persistence adapter now implements CAS, create-only delivery, identical-event replay and CAS acknowledgement. It does not yet schedule recovery or implement request idempotency. Until access control, recovery orchestration and integration tests are complete, do not provision or expose the new API.
 
 Existing Wazuh finding case API is intentionally unchanged. The core manager is not modified until verified response execution requires it.
 
