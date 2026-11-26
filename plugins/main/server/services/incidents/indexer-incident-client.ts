@@ -1,3 +1,4 @@
+import { RuleBehaviourInput, RuleBehaviourReport, validateRuleBehaviour, validateRuleBehaviourReport } from '../../../common/incidents/rule-behaviour-contract';
 import { BehaviourReport, validateBehaviourInput, validateBehaviourReport } from '../../../common/incidents/behaviour-contract';
 import { validateHuntBookmarks } from '../../../common/incidents/hunt-bookmark-validation';
 import { EntityInvestigation, validateEntityInvestigation } from '../../../common/incidents/entity-investigation';
@@ -178,6 +179,15 @@ export class IndexerIncidentClient {
     const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
       body: { operation: 'withdraw-sighting', expected_revision: expected, id, sighting_revision: sightingRevision, reason } });
     return validateMutation(body, expected, 1);
+  }
+
+  async assessRuleBehaviour(input: RuleBehaviourInput): Promise<RuleBehaviourReport> {
+    let payload: RuleBehaviourInput;
+    try { payload = validateRuleBehaviour(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<RuleBehaviourReport>({
+      method: 'POST', path: '/_plugins/_setup/incident-behaviour/rule-assess', body: payload,
+    });
+    return validateRuleBehaviourReport(body,payload);
   }
 
   async assessBehaviour(input: HuntInput): Promise<BehaviourReport> {
