@@ -1,3 +1,4 @@
+import { IndicatorInput, IndicatorCatalog, CatalogMutation, validateBatch, validateCatalog, validateMutation, UUID, safeText } from '../../../common/incidents/indicator-contract';
 import { HuntInput, HuntReport, validateHunt, validateHuntReport } from '../../../common/incidents/hunt-contract';
 import { validateInvestigationRegister, validateTags } from '../../../common/incidents/investigation-register-validation';
 import type { IssuedResponsePage, IncidentResponsePage, IncidentMetricsQuery, IncidentMetricsReport, CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
@@ -96,6 +97,28 @@ function commandBody(command: IndexerIncidentCommand): object {
  */
 export class IndexerIncidentClient {
   constructor(private readonly transport: CurrentUserIncidentTransport) {}
+
+  async indicators(): Promise<IndicatorCatalog> {
+    const { body } = await this.transport.request<IndicatorCatalog>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/read', body: {} });
+    return validateCatalog(body);
+  }
+  async addIndicators(expected: number, items: IndicatorInput[]): Promise<CatalogMutation> {
+    let entries: IndicatorInput[];
+    try {
+      if (!Number.isSafeInteger(expected) || expected < 0 || expected >= 2147483647) throw new Error('Invalid revision');
+      entries = validateBatch(items);
+    } catch (_) { throw { statusCode: 400 }; }
+    const payload = { operation: 'add', expected_revision: expected, indicators: entries };
+    if (Buffer.byteLength(JSON.stringify(payload), 'utf8') > 16384) throw { statusCode: 400 };
+    const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save', body: payload });
+    return validateMutation(body, expected, entries.length);
+  }
+  async revokeIndicator(expected: number, id: string, reason: string): Promise<CatalogMutation> {
+    if (!Number.isSafeInteger(expected) || expected < 1 || expected >= 2147483647 || !UUID.test(id) || !safeText(reason, 1024)) throw { statusCode: 400 };
+    const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
+      body: { operation: 'revoke', expected_revision: expected, id, reason } });
+    return validateMutation(body, expected, 1);
+  }
 
   async hunt(input: HuntInput): Promise<HuntReport> {
     let payload: HuntInput;
