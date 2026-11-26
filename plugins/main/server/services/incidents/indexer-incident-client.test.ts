@@ -24,6 +24,24 @@ describe('dedicated indexer incident adapter', () => {
     });
   });
 
+  test('personal queue requests do not accept an actor override', async () => {
+    const { client, request } = setup();
+    request.mockResolvedValueOnce({ body: { incidents: [] } });
+    await client.list({ queue: 'handover', limit: 50 });
+    expect(request.mock.calls[0][0].querystring).toEqual({ queue: 'handover', limit: 50 });
+  });
+
+  test('handover commands forward only target and reason and validate returned ownership', async () => {
+    const { client, request } = setup(2);
+    const command = { kind: 'offer-handover' as const, target: 'bob', reason: 'Shift change', actor: 'forged' };
+    await client.command(ID, 1, command);
+    expect(request.mock.calls[0][0].body).toEqual({ target: 'bob', reason: 'Shift change' });
+    expect(request.mock.calls[0][0].path).toBe('/_plugins/_setup/incidents/' + ID + '/offer-handover');
+    request.mockResolvedValueOnce({ body: { incident: { id: ID, revision: 2, finding_count: 0, owner: 'alice',
+      handover: { target: 'bob', offered_by: 'eve', offered_at: '2026-11-26T12:00:00Z' } } } });
+    await expect(client.get(ID)).rejects.toThrow(/handover projection/);
+  });
+
   test('rejects invalid queue limits and leaked internal data', async () => {
     const { client, request } = setup();
     await expect(client.list({ limit: 101 })).rejects.toThrow();
