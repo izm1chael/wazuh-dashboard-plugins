@@ -46,8 +46,8 @@ export function CorrelationPreviewPanel({ back, preview = previewRequest, save =
       setPolicy(result.policy.policy_id); setVersion(String(result.policy.policy_version));
       setRules(result.policy.rules.join('\n')); setWindow(String(result.policy.window_minutes));
       setThreshold(String(result.policy.minimum_findings));
-      setNotice(operation === 'read' ? 'Saved preview-only policy loaded.' :
-        result.replayed ? 'Identical policy version already saved.' : 'Immutable preview-only policy version saved.');
+      setNotice(operation === 'read' ? 'Saved immutable policy version loaded.' :
+        result.replayed ? 'Identical policy version already saved.' : 'Immutable policy version saved; execution is not enabled.');
     } catch (_) {
       setError('Policy operation failed. Check permissions, UUID and version. Changed definitions require a new version.');
     } finally { inFlight.current = false; setBusy(false); }
@@ -69,9 +69,9 @@ export function CorrelationPreviewPanel({ back, preview = previewRequest, save =
   }
   return <>
     <EuiButtonEmpty onClick={back} disabled={busy}>Back to incidents</EuiButtonEmpty>
-    <EuiTitle size='l'><h1>Correlation preview</h1></EuiTitle>
+    <EuiTitle size='l'><h1>Analytics rule design and correlation preview</h1></EuiTitle>
     <EuiSpacer size='s' />
-    <EuiCallOut title='Read-only dry run'>Groups caller-visible findings by rule UUID, cluster, agent and fixed UTC window. Running a preview writes no incidents, policies or evidence. Saving a policy is a separate explicit action and never enables automation. Results are a search snapshot, not proof of complete ingestion.</EuiCallOut>
+    <EuiCallOut title='Read-only dry run'>Groups caller-visible findings by rule UUID, cluster, agent and fixed UTC window. Running a preview writes no incidents, policies or evidence. Saving a policy is a separate explicit action and never enables automation. Scheduled execution requires an operator-approved immutable version, an authenticated service account, a closed UTC window, and a separate execution gate. Execution limits are 100 findings and 20 groups per window (preview can inspect up to 1,000 findings). Results are a search snapshot, not proof of complete ingestion.</EuiCallOut>
     <EuiSpacer size='m' />
     {error && <EuiCallOut color='danger' title={error} />}
     {notice && <EuiCallOut title={notice} />}
@@ -82,7 +82,7 @@ export function CorrelationPreviewPanel({ back, preview = previewRequest, save =
       <EuiFormRow label='Window minutes'><EuiFieldText value={window} disabled={busy} onChange={e => setWindow(e.target.value)} /></EuiFormRow>
       <EuiFormRow label='Minimum findings'><EuiFieldText value={threshold} disabled={busy} onChange={e => setThreshold(e.target.value)} /></EuiFormRow>
       <EuiButton type='button' disabled={busy} onClick={() => void policyOperation('read')}>Load saved version</EuiButton>
-      <EuiButton type='button' disabled={busy} onClick={() => void policyOperation('save')}>Save preview-only version</EuiButton>
+      <EuiButton type='button' disabled={busy} onClick={() => void policyOperation('save')}>Save immutable policy version</EuiButton>
       <EuiSpacer size='m' />
       <EuiFormRow label='From (UTC)' helpText='Example: 2026-11-26T12:00:00Z'><EuiFieldText value={from} disabled={busy} onChange={e => setFrom(e.target.value)} /></EuiFormRow>
       <EuiFormRow label='Until (UTC, exclusive)'><EuiFieldText value={until} disabled={busy} onChange={e => setUntil(e.target.value)} /></EuiFormRow>
