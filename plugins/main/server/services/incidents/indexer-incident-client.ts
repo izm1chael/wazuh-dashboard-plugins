@@ -1,3 +1,4 @@
+import { AnalyticsWindowQuery, AnalyticsStatus, validateWindow, validateAnalyticsStatus } from '../../../common/incidents/analytics-contract';
 import { IndicatorInput, IndicatorCatalog, CatalogMutation, validateBatch, validateCatalog, validateMutation, UUID, safeText, timestamp } from '../../../common/incidents/indicator-contract';
 import { HuntInput, HuntReport, validateHunt, validateHuntReport } from '../../../common/incidents/hunt-contract';
 import { validateInvestigationRegister, validateTags } from '../../../common/incidents/investigation-register-validation';
@@ -97,6 +98,13 @@ function commandBody(command: IndexerIncidentCommand): object {
  */
 export class IndexerIncidentClient {
   constructor(private readonly transport: CurrentUserIncidentTransport) {}
+
+  async analyticsStatus(input: AnalyticsWindowQuery): Promise<AnalyticsStatus> {
+    let query: AnalyticsWindowQuery;
+    try { query = validateWindow(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<AnalyticsStatus>({ method: 'POST', path: '/_plugins/_setup/incident-analytics/status', body: query });
+    return validateAnalyticsStatus(body, query);
+  }
 
   async indicators(): Promise<IndicatorCatalog> {
     const { body } = await this.transport.request<IndicatorCatalog>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/read', body: {} });
