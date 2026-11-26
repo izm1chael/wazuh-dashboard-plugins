@@ -80,7 +80,8 @@ export function IncidentInvestigationPanel({ api, incident, disabled, attach, op
       {hunt && <>
         <EuiButtonEmpty onClick={() => setHunt(undefined)}>Close hunt</EuiButtonEmpty>
         <IncidentHuntPanel key={JSON.stringify(hunt)} initial={hunt} disabled={disabled} openRelated={openRelated}
-          attach={incident.owner && incident.status !== 'closed' ? attach : undefined} />
+          attach={incident.owner && incident.status !== 'closed' ? attach : undefined}
+          saveBookmark={incident.owner && incident.status !== 'closed' ? attach : undefined} />
       </>}
       <EuiFormRow label='Timeline source'><EuiSelect value={filter} disabled={!!entity} onChange={e => setFilter(e.target.value)}
         options={[{ value: 'all', text: 'All sources' }, { value: 'finding', text: 'Finding observations' }, { value: 'activity', text: 'Analyst activity' }]} /></EuiFormRow>
