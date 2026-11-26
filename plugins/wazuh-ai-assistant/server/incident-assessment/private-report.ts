@@ -9,13 +9,27 @@ interface Assessment {
   hypothesis?: Cited; tuning?: Cited[];
 }
 
+/** Fixed JSON canonicalization for the structured export, not a general digital signature format. */
+export function canonicalReport(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(canonicalReport).join(',') + ']';
+  if (value !== null && typeof value === 'object') {
+    const row = value as Record<string, unknown>;
+    return '{' + Object.keys(row).sort().map(key => JSON.stringify(key) + ':' + canonicalReport(row[key])).join(',') + '}';
+  }
+  if (value === null || typeof value === 'string' || typeof value === 'boolean' ||
+      (typeof value === 'number' && Number.isSafeInteger(value))) return JSON.stringify(value);
+  throw new Error('Invalid report value');
+}
+
 /** Server-created provenance, not a signed or immutable forensic receipt. */
 export function buildPrivateReport(assessment: Assessment, providerId: string, model: string, now: Date) {
-  const provenance = {
+  const core = {
     assessment_id: randomUUID(), schema_version: 1 as const,
     assessed_at: now.toISOString(), provider_id: providerId, model,
     digest_sha256: createHash('sha256').update(JSON.stringify(assessment.digest), 'utf8').digest('hex'),
   };
+  const provenance = { ...core, report_hash_serialization: 'sorted-json-v1' as const,
+    report_sha256: createHash('sha256').update(canonicalReport({ provenance: core, assessment }), 'utf8').digest('hex') };
   // Only server-validated output and the bounded digest enter the report. Never store credentials,
   // endpoint URLs, provider raw output, source references, or arbitrary prompts.
   const document: Pick<ConversationDocument, 'title' | 'messages'> = {

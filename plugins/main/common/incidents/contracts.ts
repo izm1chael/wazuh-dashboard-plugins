@@ -188,7 +188,7 @@ export interface PlaybookRun {
 export type AiFeedbackRating = 'useful' | 'partly_useful' | 'not_useful';
 export type AiHypothesisReview = 'agree' | 'disagree' | 'not_reviewed';
 export interface AiFeedback {
-  assessment_id: string; assessed_revision: number; digest_sha256: string;
+  assessment_id: string; assessed_revision: number; digest_sha256: string; report_sha256?: string;
   assessment_mode: 'ai_review' | 'agentic_soc'; assessment_rating: AiFeedbackRating; hypothesis_review: AiHypothesisReview;
 }
 

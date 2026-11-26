@@ -59,7 +59,8 @@ function commandBody(command: IndexerIncidentCommand): object {
       return { proposal_id: command.proposal_id, decision: command.decision, fixture_sha256: command.fixture_sha256, reason: command.reason };
     case 'record-ai-feedback':
       return { assessment_id: command.assessment_id, assessed_revision: command.assessed_revision,
-        digest_sha256: command.digest_sha256, assessment_mode: command.assessment_mode,
+        digest_sha256: command.digest_sha256, ...(command.report_sha256 === undefined ? {} : { report_sha256: command.report_sha256 }),
+        assessment_mode: command.assessment_mode,
         assessment_rating: command.assessment_rating, hypothesis_review: command.hypothesis_review };
     case 'apply-playbook':
       return { template_id: command.template_id, version: command.version };

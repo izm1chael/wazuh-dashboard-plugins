@@ -266,6 +266,7 @@ export function registerIncidentRoutes(router: IRouter) {
   router.post({ path: ROOT + '/{id}/record-ai-feedback', validate: { params, query, body: schema.object({
     assessment_id: idSchema, assessed_revision: revisionSchema,
     digest_sha256: schema.string({ minLength: 64, maxLength: 64 }),
+    report_sha256: schema.maybe(schema.string({ minLength: 64, maxLength: 64 })),
     assessment_mode: schema.oneOf([schema.literal('ai_review'), schema.literal('agentic_soc')]),
     assessment_rating: schema.oneOf([schema.literal('useful'), schema.literal('partly_useful'), schema.literal('not_useful')]),
     hypothesis_review: schema.oneOf([schema.literal('agree'), schema.literal('disagree'), schema.literal('not_reviewed')]),

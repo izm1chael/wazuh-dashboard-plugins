@@ -10,7 +10,7 @@ interface Assessment {
   incident_id: string; observed_revision: number; mode: Mode; advisory_only: true;
   digest: { facts: Fact[]; scope: 'first_finding_page' | 'expanded_linked_findings'; complete_link_coverage: boolean };
   probes: string[]; recommendations: Cited[]; hypothesis?: Cited; tuning?: Cited[];
-  provenance?: { assessment_id: string; assessed_at: string; model: string; digest_sha256: string; schema_version: 1; provider_id: string };
+  provenance?: { assessment_id: string; assessed_at: string; model: string; digest_sha256: string; schema_version: 1; provider_id: string; report_sha256?: string; report_hash_serialization?: 'sorted-json-v1' };
   private_report?: { state: 'not_requested' | 'saved' | 'unconfirmed'; id?: string };
 }
 const ACTIONS: Record<string, string> = {
@@ -50,6 +50,9 @@ function validate(result: Assessment, incident: IncidentSummary, mode: Mode): vo
       result.provenance.model.length > 256 || typeof result.provenance.provider_id !== 'string' || result.provenance.provider_id.length > 128)) {
     throw new Error('Invalid assessment provenance');
   }
+  if (result.provenance && ((result.provenance.report_sha256 === undefined) !== (result.provenance.report_hash_serialization === undefined) ||
+      (result.provenance.report_sha256 !== undefined && (!/^[0-9a-f]{64}$/.test(result.provenance.report_sha256) ||
+        result.provenance.report_hash_serialization !== 'sorted-json-v1')))) throw new Error('Invalid report fingerprint');
   if (result.private_report && (!['not_requested', 'saved', 'unconfirmed'].includes(result.private_report.state) ||
       (result.private_report.state === 'saved' ? typeof result.private_report.id !== 'string' || !result.private_report.id :
         result.private_report.id !== undefined))) throw new Error('Invalid report save state');
@@ -78,6 +81,19 @@ function validate(result: Assessment, incident: IncidentSummary, mode: Mode): vo
 }
 const request = (incident: IncidentSummary, mode: Mode, savePrivate: boolean) => getHttp().post<Assessment>('/api/wazuh_ai_assistant/incident-assessment',
   { body: JSON.stringify({ incident_id: incident.id, expected_revision: incident.revision, mode, consent: true, save_private_report: savePrivate }) });
+function exportReport(result: Assessment) {
+  if (!result.provenance?.report_sha256) return;
+  const assessment = { incident_id: result.incident_id, observed_revision: result.observed_revision, mode: result.mode,
+    advisory_only: result.advisory_only, digest: result.digest, probes: result.probes, recommendations: result.recommendations,
+    ...(result.hypothesis === undefined ? {} : { hypothesis: result.hypothesis }),
+    ...(result.tuning === undefined ? {} : { tuning: result.tuning }) };
+  const url = URL.createObjectURL(new Blob([JSON.stringify({ provenance: result.provenance, assessment }, null, 2)],
+    { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url; link.download = 'incident-assessment-' + result.provenance.assessment_id + '.json';
+  document.body.appendChild(link);
+  try { link.click(); } finally { link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); }
+}
 const label = (kind: string) => kind.replace(/_/g, ' ');
 const valueText = (value: Fact['value']) => Array.isArray(value) ? value.join(', ') || 'None in sampled fields' : String(value);
 
@@ -161,10 +177,14 @@ export function IncidentAiPanel({ incident, disabled, assess = request, command 
         {result.private_report?.state === 'unconfirmed' && <p>Private report save could not be confirmed. Check AI Assistant history before trying again.</p>}
         <p>References identify bounded facts, not verified causal evidence. No shared incident evidence is automatically written.</p>
       </EuiText>
+      {result.provenance?.report_sha256 && <>
+        <EuiText size='s'><p>Portable report SHA-256: {result.provenance.report_sha256}. This is a content fingerprint, not a signature. Retain the JSON export in an approved evidence store; it may contain sensitive aggregate investigation facts.</p></EuiText>
+        <EuiButton onClick={() => exportReport(result)}>Export private assessment JSON</EuiButton>
+      </>}
       {result.provenance && command && incident.owner && <>
         <EuiSpacer size='m' />
         <EuiTitle size='xs'><h3>Analyst feedback</h3></EuiTitle>
-        <EuiText size='s'>Record an explicit analyst attestation in the shared incident activity history. Only assessment ID, digest hash, revision, mode and feedback choices are shared; not the evidence digest. This does not change classification or train the model.</EuiText>
+        <EuiText size='s'>Record an explicit analyst attestation in the shared incident activity history. Only assessment ID, digest/report hashes, revision, mode and feedback choices are shared; not the evidence digest. This does not change classification or train the model.</EuiText>
         <EuiFormRow label='Assessment usefulness'><EuiSelect value={rating} options={['useful', 'partly_useful', 'not_useful'].map(value => ({ value, text: label(value) }))}
           onChange={event => setRating(event.target.value as AiFeedbackRating)} /></EuiFormRow>
         {result.mode === 'agentic_soc' && <EuiFormRow label='Classification hypothesis review'><EuiSelect value={hypothesisReview}
@@ -177,6 +197,7 @@ export function IncidentAiPanel({ incident, disabled, assess = request, command 
           setSharing(false);
           void command({ kind: 'record-ai-feedback', assessment_id: result.provenance.assessment_id,
             assessed_revision: result.observed_revision, digest_sha256: result.provenance.digest_sha256,
+            ...(result.provenance.report_sha256 ? { report_sha256: result.provenance.report_sha256 } : {}),
             assessment_mode: result.mode, assessment_rating: rating, hypothesis_review: result.mode === 'agentic_soc' ? hypothesisReview : 'not_reviewed' });
         }}>Record analyst feedback</EuiButton>
       </>}
