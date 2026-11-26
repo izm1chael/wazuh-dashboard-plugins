@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import { getHttp } from '../../../kibana-services';
 import type { CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput } from '../../../../common/incidents/contracts';
+import { analyticsPolicyFingerprint } from '../../../../common/incidents/analytics-policy-fingerprint';
 import { validateCorrelationPolicy, validateCorrelationPreview } from '../../../../common/incidents/correlation-validation';
 
 const previewRequest = (input: CorrelationPreviewInput) =>
@@ -27,6 +28,7 @@ export function CorrelationPreviewPanel({ back, preview = previewRequest, save =
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [approval, setApproval] = useState('');
   const [result, setResult] = useState<CorrelationPreview>();
   const [expanded, setExpanded] = useState<string>();
   const inFlight = useRef(false);
@@ -37,7 +39,7 @@ export function CorrelationPreviewPanel({ back, preview = previewRequest, save =
 
   async function policyOperation(operation: 'save' | 'read') {
     if (inFlight.current) return;
-    setError(''); setNotice(''); setResult(undefined);
+    setError(''); setNotice(''); setResult(undefined); setApproval('');
     inFlight.current = true; setBusy(true);
     try {
       const input = definition();
@@ -48,6 +50,10 @@ export function CorrelationPreviewPanel({ back, preview = previewRequest, save =
       setThreshold(String(result.policy.minimum_findings));
       setNotice(operation === 'read' ? 'Saved immutable policy version loaded.' :
         result.replayed ? 'Identical policy version already saved.' : 'Immutable policy version saved; execution is not enabled.');
+      if (globalThis.crypto?.subtle) {
+        try { setApproval(result.policy.policy_id + ':' + result.policy.policy_version + ':' + await analyticsPolicyFingerprint(result.policy, globalThis.crypto.subtle)); }
+        catch (_) { setApproval(''); }
+      }
     } catch (_) {
       setError('Policy operation failed. Check permissions, UUID and version. Changed definitions require a new version.');
     } finally { inFlight.current = false; setBusy(false); }
@@ -56,7 +62,7 @@ export function CorrelationPreviewPanel({ back, preview = previewRequest, save =
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (inFlight.current) return;
-    setError(''); setNotice(''); setResult(undefined); setExpanded(undefined);
+    setError(''); setNotice(''); setResult(undefined); setExpanded(undefined); setApproval('');
     const input: CorrelationPreviewInput = { policy_id: policy.trim(), policy_version: Number(version),
       rules: rules.split(/[\s,]+/).filter(Boolean), window_minutes: Number(window),
       minimum_findings: Number(threshold), from: from.trim(), until: until.trim() };
@@ -75,12 +81,13 @@ export function CorrelationPreviewPanel({ back, preview = previewRequest, save =
     <EuiSpacer size='m' />
     {error && <EuiCallOut color='danger' title={error} />}
     {notice && <EuiCallOut title={notice} />}
+    {approval && <EuiCallOut title='Saved policy approval fingerprint'><EuiText size='s'>Copy the exact entry only after operator review. This does not activate execution.<p style={{ overflowWrap: 'anywhere' }}><code>{approval}</code></p></EuiText></EuiCallOut>}
     <form onSubmit={submit}>
-      <EuiFormRow label='Policy UUID'><EuiFieldText value={policy} disabled={busy} maxLength={36} onChange={e => setPolicy(e.target.value)} /></EuiFormRow>
-      <EuiFormRow label='Policy version'><EuiFieldText value={version} disabled={busy} onChange={e => setVersion(e.target.value)} /></EuiFormRow>
-      <EuiFormRow label='Rule UUIDs' helpText='One per line, or comma separated'><EuiTextArea value={rules} disabled={busy} maxLength={4000} onChange={e => setRules(e.target.value)} /></EuiFormRow>
-      <EuiFormRow label='Window minutes'><EuiFieldText value={window} disabled={busy} onChange={e => setWindow(e.target.value)} /></EuiFormRow>
-      <EuiFormRow label='Minimum findings'><EuiFieldText value={threshold} disabled={busy} onChange={e => setThreshold(e.target.value)} /></EuiFormRow>
+      <EuiFormRow label='Policy UUID'><EuiFieldText value={policy} disabled={busy} maxLength={36} onChange={e => { setApproval(''); setPolicy(e.target.value); }} /></EuiFormRow>
+      <EuiFormRow label='Policy version'><EuiFieldText value={version} disabled={busy} onChange={e => { setApproval(''); setVersion(e.target.value); }} /></EuiFormRow>
+      <EuiFormRow label='Rule UUIDs' helpText='One per line, or comma separated'><EuiTextArea value={rules} disabled={busy} maxLength={4000} onChange={e => { setApproval(''); setRules(e.target.value); }} /></EuiFormRow>
+      <EuiFormRow label='Window minutes'><EuiFieldText value={window} disabled={busy} onChange={e => { setApproval(''); setWindow(e.target.value); }} /></EuiFormRow>
+      <EuiFormRow label='Minimum findings'><EuiFieldText value={threshold} disabled={busy} onChange={e => { setApproval(''); setThreshold(e.target.value); }} /></EuiFormRow>
       <EuiButton type='button' disabled={busy} onClick={() => void policyOperation('read')}>Load saved version</EuiButton>
       <EuiButton type='button' disabled={busy} onClick={() => void policyOperation('save')}>Save immutable policy version</EuiButton>
       <EuiSpacer size='m' />
