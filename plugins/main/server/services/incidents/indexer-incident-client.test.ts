@@ -10,6 +10,28 @@ function setup(revision = 1) {
 }
 
 describe('dedicated indexer incident adapter', () => {
+  test('reads fixed incident detail and queue paths', async () => {
+    const { client, request } = setup();
+    const incident = { id: ID, revision: 1, finding_count: 0 };
+    request.mockResolvedValueOnce({ body: { incident } });
+    expect(await client.get(ID)).toEqual(incident);
+    expect(request.mock.calls[0][0]).toEqual({ method: 'GET', path: '/_plugins/_setup/incidents/' + ID });
+    request.mockResolvedValueOnce({ body: { incidents: [incident], next: { time: 123, id: ID } } });
+    await client.list({ queue: 'unassigned', limit: 1, after: { time: 122, id: ID } });
+    expect(request.mock.calls[1][0]).toEqual({
+      method: 'GET', path: '/_plugins/_setup/incidents',
+      querystring: { queue: 'unassigned', limit: 1, after_time: 122, after_id: ID },
+    });
+  });
+
+  test('rejects invalid queue limits and leaked internal data', async () => {
+    const { client, request } = setup();
+    await expect(client.list({ limit: 101 })).rejects.toThrow();
+    expect(request).not.toHaveBeenCalled();
+    request.mockResolvedValueOnce({ body: { incidents: [{ id: ID, revision: 1, finding_count: 0, findings: [] }] } });
+    await expect(client.list()).rejects.toThrow(/projection/);
+  });
+
   test('create sends only the allowed fields to the fixed API', async () => {
     const { client, request } = setup();
     const input = { title: 'Example', severity: 'high' as const, created_by: 'forged', owner: 'forged' };

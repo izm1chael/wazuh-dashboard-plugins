@@ -5,10 +5,10 @@ import { validateIncidentId } from './incident-id';
  * administrator client. The indexer is the authority for permissions and state. */
 export interface CurrentUserIncidentTransport {
   request<T>(params: {
-    method: 'POST';
+    method: 'POST' | 'GET';
     path: string;
-    querystring?: Record<string, number>;
-    body: object;
+    querystring?: Record<string, string | number>;
+    body?: object;
   }): Promise<{ body: T }>;
 }
 
@@ -20,6 +20,18 @@ export type IndexerIncidentCommand =
   | { kind: 'attach-finding' | 'detach-finding'; index: string; document_id: string };
 
 export type IncidentSummary = Omit<Incident, 'pending_activity'> & { finding_count: number };
+export type Queue = 'open' | 'new' | 'triaging' | 'active' | 'closed' | 'unassigned' | 'all';
+export interface QueueCursor { time: number; id: string }
+export interface QueueQuery {
+  queue?: Queue;
+  severity?: Severity;
+  owner?: string;
+  search?: string;
+  limit?: number;
+  after?: QueueCursor;
+}
+export interface QueuePage { incidents: IncidentSummary[]; next?: QueueCursor }
+
 export interface IndexerIncidentResult {
   incident: IncidentSummary;
   activity_delivery: 'delivered' | 'pending';
@@ -62,6 +74,36 @@ function commandBody(command: IndexerIncidentCommand): object {
 export class IndexerIncidentClient {
   constructor(private readonly transport: CurrentUserIncidentTransport) {}
 
+  async list(query: QueueQuery = {}): Promise<QueuePage> {
+    const limit = query.limit ?? 50;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Invalid queue limit');
+    if (query.after !== undefined) validateCursor(query.after);
+    const { body } = await this.transport.request<QueuePage>({
+      method: 'GET', path: ROOT,
+      querystring: {
+        queue: query.queue ?? 'open', limit,
+        ...(query.severity === undefined ? {} : { severity: query.severity }),
+        ...(query.owner === undefined ? {} : { owner: query.owner }),
+        ...(query.search === undefined ? {} : { search: query.search }),
+        ...(query.after === undefined ? {} : { after_time: query.after.time, after_id: query.after.id }),
+      },
+    });
+    if (!body || !Array.isArray(body.incidents) || body.incidents.length > limit) throw new Error('Invalid incident page');
+    body.incidents.forEach(summary => validateSummary(summary));
+    if (body.next !== undefined) validateCursor(body.next);
+    return body;
+  }
+
+  async get(id: string): Promise<IncidentSummary> {
+    validateIncidentId(id);
+    const { body } = await this.transport.request<{ incident: IncidentSummary }>({
+      method: 'GET', path: ROOT + '/' + encodeURIComponent(id),
+    });
+    if (!body) throw new Error('Invalid incident detail');
+    validateSummary(body.incident, id);
+    return body.incident;
+  }
+
   async create(input: CreateIncident): Promise<IndexerIncidentResult> {
     const { body } = await this.transport.request<IndexerIncidentResult>({
       method: 'POST', path: ROOT,
@@ -94,14 +136,24 @@ function validateResult(body: IndexerIncidentResult, id?: string, revision?: num
   if (!body || !body.incident || !['pending', 'delivered'].includes(body.activity_delivery)) {
     throw new Error('Invalid incident mutation response; reload before retrying');
   }
-  validateIncidentId(body.incident.id);
-  if (!Number.isSafeInteger(body.incident.revision) || body.incident.revision < 1 ||
-      (revision !== undefined && body.incident.revision !== revision) ||
-      (id !== undefined && body.incident.id !== id) ||
-      !Number.isSafeInteger(body.incident.finding_count) || body.incident.finding_count < 0 ||
-      Object.prototype.hasOwnProperty.call(body.incident, 'pending_activity') ||
-      Object.prototype.hasOwnProperty.call(body.incident, 'findings')) {
-    throw new Error('Invalid incident mutation projection; reload before retrying');
-  }
+  validateSummary(body.incident, id, revision);
   return body;
+}
+
+function validateCursor(cursor: QueueCursor): void {
+  if (!cursor || !Number.isSafeInteger(cursor.time)) throw new Error('Invalid queue cursor');
+  validateIncidentId(cursor.id);
+}
+
+function validateSummary(incident: IncidentSummary, id?: string, revision?: number): void {
+  if (!incident) throw new Error('Invalid incident projection');
+  validateIncidentId(incident.id);
+  if (!Number.isSafeInteger(incident.revision) || incident.revision < 1 ||
+      (revision !== undefined && incident.revision !== revision) ||
+      (id !== undefined && incident.id !== id) ||
+      !Number.isSafeInteger(incident.finding_count) || incident.finding_count < 0 ||
+      Object.prototype.hasOwnProperty.call(incident, 'pending_activity') ||
+      Object.prototype.hasOwnProperty.call(incident, 'findings')) {
+    throw new Error('Invalid incident projection; reload before retrying');
+  }
 }
