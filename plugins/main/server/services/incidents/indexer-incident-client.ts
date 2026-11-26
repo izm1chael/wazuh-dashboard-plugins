@@ -1,3 +1,4 @@
+import { BehaviourReport, validateBehaviourInput, validateBehaviourReport } from '../../../common/incidents/behaviour-contract';
 import { validateHuntBookmarks } from '../../../common/incidents/hunt-bookmark-validation';
 import { EntityInvestigation, validateEntityInvestigation } from '../../../common/incidents/entity-investigation';
 import { AutomationKey, AutomationPolicy, AutomationHistory, AutomationPreview, AutomationSave, SavedAutomation, validateAutomationKey, validateAutomationPolicy, validateAutomationHistory, validateAutomationPreview, validateAutomationSave, validateSavedAutomation, UUID as AUTOMATION_UUID } from '../../../common/incidents/automation-contract';
@@ -177,6 +178,15 @@ export class IndexerIncidentClient {
     const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
       body: { operation: 'withdraw-sighting', expected_revision: expected, id, sighting_revision: sightingRevision, reason } });
     return validateMutation(body, expected, 1);
+  }
+
+  async assessBehaviour(input: HuntInput): Promise<BehaviourReport> {
+    let payload: HuntInput;
+    try { payload = validateBehaviourInput(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<BehaviourReport>({
+      method: 'POST', path: '/_plugins/_setup/incident-behaviour/assess', body: payload,
+    });
+    return validateBehaviourReport(body,payload);
   }
 
   async investigateEntity(input: HuntInput): Promise<EntityInvestigation> {
