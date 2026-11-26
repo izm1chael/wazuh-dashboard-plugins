@@ -1,5 +1,5 @@
 import { assessRuleVolume } from './rule-behaviour-contract';
-import { BehaviourObservation, ObservationPage, validateObservation, validateObservationDay, validateObservationPage, validateObservationReview, validateReviewResult, validatePromotionResult } from './behaviour-observation-contract';
+import { BehaviourObservation, ObservationPage, validateObservation, validateObservationDay, validateObservationPage, validateObservationReview, validateReviewResult, validatePromotionResult, entityObservationPriorities } from './behaviour-observation-contract';
 const day='2026-11-25T00:00:00Z',at='2026-11-26T00:02:00Z',id='197591c7-8a01-840e-9b4c-02f888e34dd7';
 const row:BehaviourObservation={id,model:'rule_volume_v2',query:{field:'user.name',value:'alice',rule_uuid:'00000000-0000-4000-8000-000000000001',day},
   actor:'publisher',observed_at:at,coverage:'search_complete_telemetry_unverified',finding_count:61,assessment:assessRuleVolume(Array<number>(28).fill(2),5),
@@ -38,5 +38,20 @@ describe('behaviour observation contract',()=>{
     expect(validatePromotionResult(promoted,{id,expected_revision:2})).toEqual(promoted);
     expect(()=>validatePromotionResult(reviewed,{id,expected_revision:2})).toThrow();
     expect(()=>validatePromotionResult(promoted,{id:'00000000-0000-4000-8000-000000000001',expected_revision:2})).toThrow();
+  });
+});
+
+describe('exact entity prioritisation',()=>{
+  it('counts rules, separates publishers and rejects duplicate semantic scopes',()=>{
+    const second:BehaviourObservation={...row,id:'297591c7-8a01-840e-9b4c-02f888e34dd7',query:{...row.query,rule_uuid:'00000000-0000-4000-8000-000000000002'}};
+    const other:BehaviourObservation={...row,id:'397591c7-8a01-840e-9b4c-02f888e34dd7',actor:'publisher2'};
+    const priorities=entityObservationPriorities({...page,rows:[row,second,other],count:3});
+    expect(priorities.length).toBe(2);
+    expect(priorities[0].observed_rules).toBe(2);
+    expect(priorities[0].elevated_rules).toBe(2);
+    expect(priorities[0].awaiting_review).toBe(2);
+    expect(priorities[0].observation_ids).toEqual([row.id,second.id]);
+    expect(priorities[1].publisher).toBe('publisher2');
+    expect(()=>validateObservationPage({...page,rows:[row,{...row,id:second.id}],count:2},day)).toThrow();
   });
 });
