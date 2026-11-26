@@ -116,7 +116,7 @@ export function registerIncidentRoutes(router: IRouter) {
   router.get({
     path: ROOT,
     validate: { query: schema.object({
-      queue: schema.maybe(schema.oneOf(['open', 'new', 'triaging', 'active', 'closed', 'unassigned', 'all'].map(value => schema.literal(value)))),
+      queue: schema.maybe(schema.oneOf(['open', 'mine', 'handover', 'new', 'triaging', 'active', 'closed', 'unassigned', 'all'].map(value => schema.literal(value)))),
       severity: schema.maybe(severitySchema),
       owner: schema.maybe(schema.string({ maxLength: 1024 })),
       search: schema.maybe(schema.string({ maxLength: 1024 })),
