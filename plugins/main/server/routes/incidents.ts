@@ -52,6 +52,22 @@ async function respond<T extends object>(
 
 export function registerIncidentRoutes(router: IRouter) {
   router.post({
+    path: '/indexer/incident-correlation/policies/save',
+    validate: { body: schema.object({
+      policy_id: idSchema, policy_version: revisionSchema,
+      rules: schema.arrayOf(idSchema, { minSize: 1, maxSize: 100 }),
+      window_minutes: schema.number({ min: 5, max: 1440 }),
+      minimum_findings: schema.number({ min: 2, max: 100 }),
+    }) },
+  }, async (context, request, response) => respond(response, () => client(context).saveCorrelationPolicy(request.body)));
+
+  router.post({
+    path: '/indexer/incident-correlation/policies/read',
+    validate: { body: schema.object({ policy_id: idSchema, policy_version: revisionSchema }) },
+  }, async (context, request, response) => respond(response, () =>
+    client(context).readCorrelationPolicy(request.body.policy_id, request.body.policy_version)));
+
+  router.post({
     path: '/indexer/incident-correlation/preview',
     validate: { body: schema.object({
       policy_id: idSchema, policy_version: revisionSchema,

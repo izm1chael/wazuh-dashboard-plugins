@@ -58,3 +58,7 @@ The existing revision-bound, caller-filtered finding page now carries optional a
 ## Correlation dry-run workflow
 
 The workspace now links to a read-only preview form, with a dedicated current-user indexer API and permission. The rule UUID list, version, threshold and full UTC time windows are validated; no arbitrary query DSL or index names accepted. Search rejects incomplete results or over 1,000 matching findings rather than silently truncating. The preview shows candidate group identities, references and exclusion counters; no configuration is persisted and no cases are written. Search visibility and ingestion completeness remain separate concepts. Verify actual DLS/FLS, source mapping, result caps and repeatability before enabling automatic execution.
+
+## Saved correlation policies
+
+The correlation screen can explicitly save or load an immutable policy UUID/version under separate policy read/save permissions. Identical saves replay; changed definitions require a new version. Time ranges are supplied only for preview, not stored in the policy. All saved policies remain preview-only; no active version pointer or automatic execution is implemented. The preview itself remains read-only. No finding source or preview result is stored with a policy.

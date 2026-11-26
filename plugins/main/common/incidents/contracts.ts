@@ -117,3 +117,9 @@ export interface CorrelationPreview {
   groups: CorrelationGroup[]; distinct_candidates: number; duplicate_inputs: number;
   insufficient_identity: number; excluded_rule: number; outside_range: number; below_threshold: number;
 }
+
+export type CorrelationPolicyDefinition = Omit<CorrelationPreviewInput, 'from' | 'until'>;
+export interface SavedCorrelationPolicy extends CorrelationPolicyDefinition {
+  mode: 'preview_only'; created_by: string; created_at: string;
+}
+export interface SavedCorrelationPolicyResult { policy: SavedCorrelationPolicy; replayed?: boolean }

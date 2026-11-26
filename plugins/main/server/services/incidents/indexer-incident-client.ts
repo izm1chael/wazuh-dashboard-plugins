@@ -1,6 +1,6 @@
-import type { CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
+import type { CorrelationPolicyDefinition, SavedCorrelationPolicyResult, CorrelationPreview, CorrelationPreviewInput, FindingObservation, CollaborationPage, ActivityPage, FindingPage, CreateIncident, IndexerIncidentCommand, IncidentSummary, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
 export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, QueueQuery, QueuePage, IndexerIncidentResult } from '../../../common/incidents/contracts';
-import { validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
+import { validateCorrelationPolicy, validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
 import { validateIncidentId } from './incident-id';
 
 /** Production routes must bind this transport to asCurrentUser, never an internal
@@ -86,6 +86,33 @@ export class IndexerIncidentClient {
     if (!body) throw new Error('Invalid incident detail');
     validateSummary(body.incident, id);
     return body.incident;
+  }
+
+  async saveCorrelationPolicy(input: CorrelationPolicyDefinition): Promise<SavedCorrelationPolicyResult> {
+    validateCorrelationPolicy(input);
+    const { body } = await this.transport.request<SavedCorrelationPolicyResult>({
+      method: 'POST', path: '/_plugins/_setup/incident-correlation/policies/save',
+      body: { policy_id: input.policy_id, policy_version: input.policy_version, rules: input.rules,
+        window_minutes: input.window_minutes, minimum_findings: input.minimum_findings },
+    });
+    validateSavedPolicy(body, input.policy_id, input.policy_version);
+    if (typeof body.replayed !== 'boolean' ||
+        JSON.stringify([...body.policy.rules].sort()) !== JSON.stringify([...input.rules].sort()) ||
+        body.policy.window_minutes !== input.window_minutes || body.policy.minimum_findings !== input.minimum_findings) {
+      throw new Error('Saved correlation policy does not match request');
+    }
+    return body;
+  }
+
+  async readCorrelationPolicy(id: string, version: number): Promise<SavedCorrelationPolicyResult> {
+    validateIncidentId(id);
+    if (!Number.isSafeInteger(version) || version < 1 || version > 2147483647) throw new Error('Invalid policy version');
+    const { body } = await this.transport.request<SavedCorrelationPolicyResult>({
+      method: 'POST', path: '/_plugins/_setup/incident-correlation/policies/read',
+      body: { policy_id: id, policy_version: version },
+    });
+    validateSavedPolicy(body, id, version);
+    return body;
   }
 
   async correlationPreview(input: CorrelationPreviewInput): Promise<CorrelationPreview> {
@@ -260,4 +287,15 @@ function validObservation(value: FindingObservation): boolean {
       typeof entity.value === 'string' && entity.value.length <= 1024) &&
     Array.isArray(value.techniques) && value.techniques.length <= 96 && value.techniques.every(id => typeof id === 'string' && /^T[0-9]{4}(\.[0-9]{3})?$/.test(id)) &&
     Array.isArray(value.tactics) && value.tactics.length <= 48 && value.tactics.every(id => typeof id === 'string' && /^TA[0-9]{4}$/.test(id));
+}
+
+function validateSavedPolicy(body: SavedCorrelationPolicyResult, id: string, version: number): void {
+  const policy = body?.policy;
+  if (!policy || policy.policy_id !== id || policy.policy_version !== version ||
+      policy.mode !== 'preview_only' || typeof policy.created_by !== 'string' ||
+      !Number.isFinite(Date.parse(policy.created_at)) ||
+      Object.keys(policy).some(key => !['policy_id', 'policy_version', 'rules', 'window_minutes', 'minimum_findings', 'mode', 'created_by', 'created_at'].includes(key))) {
+    throw new Error('Invalid saved policy response');
+  }
+  validateCorrelationPolicy(policy);
 }
