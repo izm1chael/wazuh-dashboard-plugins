@@ -1,3 +1,4 @@
+import { validateHuntBookmarks } from '../../../common/incidents/hunt-bookmark-validation';
 import { EntityInvestigation, validateEntityInvestigation } from '../../../common/incidents/entity-investigation';
 import { AutomationKey, AutomationPolicy, AutomationHistory, AutomationPreview, AutomationSave, SavedAutomation, validateAutomationKey, validateAutomationPolicy, validateAutomationHistory, validateAutomationPreview, validateAutomationSave, validateSavedAutomation, UUID as AUTOMATION_UUID } from '../../../common/incidents/automation-contract';
 import { AnalyticsWindowQuery, AnalyticsStatus, validateWindow, validateAnalyticsStatus } from '../../../common/incidents/analytics-contract';
@@ -345,6 +346,7 @@ export class IndexerIncidentClient {
     validatePlaybooks(body, id);
     validateTuningProposals(body, id);
     validateInvestigationRegister(body, id);
+    validateHuntBookmarks(body, id);
     return body;
   }
 
