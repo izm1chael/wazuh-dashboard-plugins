@@ -3,6 +3,7 @@ export type { IndexerIncidentCommand, IncidentSummary, Queue, QueueCursor, Queue
 import { validateCorrelationPolicy, validateCorrelationPreview } from '../../../common/incidents/correlation-validation';
 import { validateMetricsQuery, validateMetricsReport } from '../../../common/incidents/metrics-validation';
 import { validateResponsePage, validateIssuedResponsePage } from '../../../common/incidents/response-validation';
+import { validateTuningProposals } from '../../../common/incidents/tuning-proposal-validation';
 import { validatePlaybooks } from '../../../common/incidents/playbook-validation';
 import { validateIncidentId } from './incident-id';
 
@@ -48,6 +49,14 @@ function commandBody(command: IndexerIncidentCommand): object {
     case 'complete-task':
     case 'reopen-task':
       return { task_id: command.task_id };
+    case 'create-tuning-proposal':
+      return { rule_uuid: command.rule_uuid, baseline_sha256: command.baseline_sha256, candidate_sha256: command.candidate_sha256,
+        type: command.type, reason: command.reason, split: command.split,
+        rows: command.rows.map(row => ({ id: row.id, label: row.label, baseline: row.baseline, candidate: row.candidate })) };
+    case 'withdraw-tuning-proposal':
+      return { proposal_id: command.proposal_id, reason: command.reason };
+    case 'review-tuning-proposal':
+      return { proposal_id: command.proposal_id, decision: command.decision, fixture_sha256: command.fixture_sha256, reason: command.reason };
     case 'record-ai-feedback':
       return { assessment_id: command.assessment_id, assessed_revision: command.assessed_revision,
         digest_sha256: command.digest_sha256, assessment_mode: command.assessment_mode,
@@ -222,6 +231,7 @@ export class IndexerIncidentClient {
       throw new Error('Invalid collaboration response');
     }
     validatePlaybooks(body, id);
+    validateTuningProposals(body, id);
     return body;
   }
 
@@ -327,7 +337,8 @@ function validateSummary(incident: IncidentSummary, id?: string, revision?: numb
       Object.prototype.hasOwnProperty.call(incident, 'create_request_hash') ||
       Object.prototype.hasOwnProperty.call(incident, 'response_requests') ||
       Object.prototype.hasOwnProperty.call(incident, 'playbook_runs') ||
-      Object.prototype.hasOwnProperty.call(incident, 'ai_feedback_ids')) {
+      Object.prototype.hasOwnProperty.call(incident, 'ai_feedback_ids') ||
+      Object.prototype.hasOwnProperty.call(incident, 'tuning_proposals')) {
     throw new Error('Invalid incident projection; reload before retrying');
   }
 }

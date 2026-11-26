@@ -48,6 +48,9 @@ export type IndexerIncidentCommand =
   | { kind: 'create-task'; title: string }
   | { kind: 'complete-task' | 'reopen-task'; task_id: string }
   | ({ kind: 'record-ai-feedback' } & AiFeedback)
+  | ({ kind: 'create-tuning-proposal' } & TuningProposalInput)
+  | { kind: 'withdraw-tuning-proposal'; proposal_id: string; reason: string }
+  | { kind: 'review-tuning-proposal'; proposal_id: string; decision: 'accepted_for_review' | 'rejected'; fixture_sha256: string; reason: string }
   | { kind: 'apply-playbook'; template_id: string; version: number }
   | { kind: 'request-response'; type: ResponseIntent; scope: string; reason: string }
   | { kind: 'approve-response' | 'reject-response' | 'cancel-response'; response_id: string; reason: string }
@@ -106,7 +109,7 @@ export interface IncidentTask {
   completed_by: string | null; completed_at: string | null;
 }
 export interface CollaborationPage {
-  playbooks?: PlaybookPreview[]; playbook_runs?: PlaybookRun[];
+  playbooks?: PlaybookPreview[]; playbook_runs?: PlaybookRun[]; tuning_proposals?: TuningProposal[];
   notes: IncidentNote[]; tasks: IncidentTask[]; observed_revision: number; activity_pending: boolean; next_before?: number;
 }
 
@@ -187,4 +190,22 @@ export type AiHypothesisReview = 'agree' | 'disagree' | 'not_reviewed';
 export interface AiFeedback {
   assessment_id: string; assessed_revision: number; digest_sha256: string;
   assessment_mode: 'ai_review' | 'agentic_soc'; assessment_rating: AiFeedbackRating; hypothesis_review: AiHypothesisReview;
+}
+
+export type TuningType = 'compare_benign_baseline' | 'review_rule_scope' | 'review_threshold_or_window' | 'review_duplicate_grouping' | 'replay_positive_and_negative_tests';
+export interface TuningProposalInput {
+  rule_uuid: string; baseline_sha256: string; candidate_sha256: string; type: TuningType; reason: string; split: 'holdout';
+  rows: Array<{ id: string; label: 'malicious' | 'benign' | 'unknown'; baseline: boolean; candidate: boolean }>;
+}
+export interface TuningReplayReceipt {
+  fixture_sha256: string; total: number; malicious: number; benign: number; unknown: number; unknown_changed: number;
+  baseline_tp: number; candidate_tp: number; baseline_fp: number; candidate_fp: number;
+  lost_malicious: number; gained_malicious: number; removed_benign: number; added_benign: number;
+  gate: 'eligible_for_human_review' | 'blocked';
+}
+export interface TuningProposal {
+  id: string; rule_uuid: string; baseline_sha256: string; candidate_sha256: string; type: TuningType; reason: string;
+  replay: TuningReplayReceipt; state: 'proposed' | 'accepted_for_review' | 'rejected' | 'withdrawn';
+  proposed_by: string; proposed_at: string; decided_by: string | null; decided_at: string | null; decision_reason: string | null;
+  evidence_origin: 'analyst_supplied_paired_holdout';
 }

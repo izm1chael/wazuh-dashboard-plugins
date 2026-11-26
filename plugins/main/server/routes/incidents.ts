@@ -1,5 +1,6 @@
 import { IRouter, RequestHandlerContext, OpenSearchDashboardsResponseFactory } from 'opensearch_dashboards/server';
 import { schema } from '@osd/config-schema';
+import { TUNING_TYPES } from '../../common/incidents/tuning-proposal-validation';
 import { ruleHistory } from '../services/incidents/rule-history-service';
 import { RESPONSE_INTENTS, RESPONSE_OUTCOMES } from '../../common/incidents/response-validation';
 import { IndexerIncidentClient, CurrentUserIncidentTransport, IndexerIncidentCommand, QueueQuery } from '../services/incidents/indexer-incident-client';
@@ -240,6 +241,27 @@ export function registerIncidentRoutes(router: IRouter) {
     }) } }, async (context, request, response) => respond(response, () =>
       client(context).command(request.params.id, request.query.expected_revision, { kind, ...request.body })));
   }
+
+  const tuningHash = schema.string({ minLength: 64, maxLength: 64 });
+  const tuningReason = schema.string({ minLength: 1, maxLength: 2048 });
+  const proposalId = schema.string({ minLength: 1, maxLength: 64 });
+  router.post({ path: ROOT + '/{id}/create-tuning-proposal', validate: { params, query, body: schema.object({
+    rule_uuid: idSchema, baseline_sha256: tuningHash, candidate_sha256: tuningHash,
+    type: schema.oneOf(TUNING_TYPES.map(value => schema.literal(value))), reason: tuningReason, split: schema.literal('holdout'),
+    rows: schema.arrayOf(schema.object({ id: schema.string({ minLength: 1, maxLength: 128 }),
+      label: schema.oneOf([schema.literal('malicious'), schema.literal('benign'), schema.literal('unknown')]),
+      baseline: schema.boolean(), candidate: schema.boolean() }), { minSize: 1, maxSize: 1000 }),
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'create-tuning-proposal', ...request.body })));
+  router.post({ path: ROOT + '/{id}/review-tuning-proposal', validate: { params, query, body: schema.object({
+    proposal_id: proposalId, decision: schema.oneOf([schema.literal('accepted_for_review'), schema.literal('rejected')]),
+    fixture_sha256: tuningHash, reason: tuningReason,
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'review-tuning-proposal', ...request.body })));
+  router.post({ path: ROOT + '/{id}/withdraw-tuning-proposal', validate: { params, query, body: schema.object({
+    proposal_id: proposalId, reason: tuningReason,
+  }) } }, async (context, request, response) => respond(response, () =>
+    client(context).command(request.params.id, request.query.expected_revision, { kind: 'withdraw-tuning-proposal', ...request.body })));
 
   router.post({ path: ROOT + '/{id}/record-ai-feedback', validate: { params, query, body: schema.object({
     assessment_id: idSchema, assessed_revision: revisionSchema,
