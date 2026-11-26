@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldSearch, EuiFormRow, EuiSelect, EuiSpacer, EuiText, EuiTitle, EuiBasicTable, EuiBasicTableColumn } from '@elastic/eui';
-import type { IncidentSummary } from '../../../../common/incidents/contracts';
+import { HUNT_FIELDS, HuntField, validHuntValue } from '../../../../common/incidents/hunt-contract';
+import { IncidentHuntPanel } from './incident-hunt-panel';
+import type { IndexerIncidentCommand, IncidentSummary } from '../../../../common/incidents/contracts';
 import type { IncidentApi } from './incident-api';
 import { loadInvestigation, InvestigationSnapshot, TimelineRow } from './investigation-snapshot';
 import { summarizeFindings } from './finding-intelligence-model';
 
-export function IncidentInvestigationPanel({ api, incident, disabled }: {
-  api: IncidentApi; incident: IncidentSummary; disabled: boolean;
+export function IncidentInvestigationPanel({ api, incident, disabled, attach }: {
+  api: IncidentApi; incident: IncidentSummary; disabled: boolean; attach?: (command: IndexerIncidentCommand) => Promise<void>;
 }) {
   const [snapshot, setSnapshot] = useState<InvestigationSnapshot>();
   const [loading, setLoading] = useState(false);
@@ -14,11 +16,12 @@ export function IncidentInvestigationPanel({ api, incident, disabled }: {
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [entity, setEntity] = useState('');
+  const [hunt, setHunt] = useState<{ field: HuntField; value: string }>();
   const generation = useRef(0);
   useEffect(() => () => { generation.current++; }, []);
   async function load() {
     const run = ++generation.current;
-    setSnapshot(undefined); setLoading(true); setError(false); setEntity(''); setQuery(''); setFilter('all');
+    setSnapshot(undefined); setHunt(undefined); setLoading(true); setError(false); setEntity(''); setQuery(''); setFilter('all');
     try {
       const result = await loadInvestigation(api, incident, () => generation.current !== run);
       if (generation.current === run) setSnapshot(result);
@@ -29,10 +32,12 @@ export function IncidentInvestigationPanel({ api, incident, disabled }: {
     }
   }
   function clear() {
-    generation.current++; setSnapshot(undefined); setLoading(false); setError(false);
+    generation.current++; setSnapshot(undefined); setHunt(undefined); setLoading(false); setError(false);
     setEntity(''); setQuery(''); setFilter('all');
   }
   const intelligence = snapshot && summarizeFindings(snapshot.observations);
+  const selectedEntity = intelligence?.entities.find(e => JSON.stringify([e.kind, e.value]) === entity);
+  const huntFields = HUNT_FIELDS.filter(field => selectedEntity?.fields.includes(field) && validHuntValue(field, selectedEntity.value));
   const entityKeys = new Set(snapshot?.observations.filter(f =>
     f.entities.some(e => JSON.stringify([e.kind, e.value]) === entity)
   ).map(f => 'finding:' + JSON.stringify([f.index, f.document_id])));
@@ -65,11 +70,18 @@ export function IncidentInvestigationPanel({ api, incident, disabled }: {
       <EuiText size='s'>Observed ATT&amp;CK techniques: {intelligence.techniques.join(', ') || 'None in visible observations'}. Tactics: {intelligence.tactics.join(', ') || 'None in visible observations'}.</EuiText>
       <EuiText size='s'>Entity menu: {Math.min(intelligence.entities.length, 250)} of {intelligence.entities.length} distinct visible entities, ranked by observed frequency. Use timeline text filtering for references.</EuiText>
       <EuiFormRow label='Observed entity pivot'>
-        <EuiSelect value={entity} onChange={e => { setEntity(e.target.value); setFilter('all'); }}
+        <EuiSelect value={entity} onChange={e => { setEntity(e.target.value); setHunt(undefined); setFilter('all'); }}
           options={[{ value: '', text: 'All visible entities' }, ...intelligence.entities.slice(0, 250).map(e => ({
             value: JSON.stringify([e.kind, e.value]), text: e.kind + ': ' + e.value + ' (' + e.count + ')',
           }))]} />
       </EuiFormRow>
+      {selectedEntity && huntFields.map(field => <EuiButtonEmpty key={field} disabled={disabled}
+        onClick={() => setHunt({ field, value: selectedEntity.value })}>Prepare hunt: {field}</EuiButtonEmpty>)}
+      {hunt && <>
+        <EuiButtonEmpty onClick={() => setHunt(undefined)}>Close hunt</EuiButtonEmpty>
+        <IncidentHuntPanel key={JSON.stringify(hunt)} initial={hunt} disabled={disabled}
+          attach={incident.owner && incident.status !== 'closed' ? attach : undefined} />
+      </>}
       <EuiFormRow label='Timeline source'><EuiSelect value={filter} disabled={!!entity} onChange={e => setFilter(e.target.value)}
         options={[{ value: 'all', text: 'All sources' }, { value: 'finding', text: 'Finding observations' }, { value: 'activity', text: 'Analyst activity' }]} /></EuiFormRow>
       <EuiFormRow label='Filter visible timeline rows'><EuiFieldSearch value={query} onChange={e => setQuery(e.target.value)} /></EuiFormRow>
