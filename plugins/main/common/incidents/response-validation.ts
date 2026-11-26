@@ -1,7 +1,8 @@
 import type { IncidentResponsePage, IncidentResponseRecord, IssuedResponsePage, FindingReference } from './contracts';
 
-export const RESPONSE_INTENTS = ['investigate_endpoint', 'review_containment', 'review_indicator_block', 'collect_evidence'] as const;
+export const RESPONSE_INTENTS = ['investigate_endpoint', 'review_containment', 'review_indicator_block', 'collect_evidence', 'scan_vulnerability'] as const;
 export const RESPONSE_OUTCOMES = ['completed', 'failed', 'not_performed'] as const;
+export const validScanScope = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}:agent:[0-9]{3,8}$/.test(value) && !/^0+$/.test(value.slice(value.lastIndexOf(':') + 1));
 const fields = ['id', 'type', 'scope', 'reason', 'state', 'requested_by', 'requested_at', 'decided_by', 'decided_at',
   'decision_reason', 'finalized_by', 'finalized_at', 'final_reason', 'execution_verified'];
 const text = (value: unknown, max: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
@@ -12,6 +13,7 @@ function valid(row: IncidentResponseRecord, id: string, revision: number): boole
       !/^[1-9][0-9]*$/.test(row.id.slice(id.length + 1)) || Number(row.id.slice(id.length + 1)) > revision ||
       row.execution_verified !== false || !text(row.scope, 512) || !text(row.reason, 2048) ||
       !text(row.requested_by, 1024) || !time(row.requested_at)) return false;
+  if (row.type === 'scan_vulnerability' && !validScanScope(row.scope)) return false;
   const noDecision = row.decided_by === null && row.decided_at === null && row.decision_reason === null;
   const decision = text(row.decided_by, 1024) && row.decided_by !== row.requested_by && time(row.decided_at) &&
     text(row.decision_reason, 2048) && Date.parse(row.decided_at!) >= Date.parse(row.requested_at);
@@ -23,6 +25,9 @@ function valid(row: IncidentResponseRecord, id: string, revision: number): boole
     case 'approved':
     case 'rejected': return decision && noFinal;
     case 'cancelled': return (noDecision || decision) && final;
+    case 'dispatch_reserved':
+    case 'manager_accepted':
+    case 'dispatch_unknown': return row.type === 'scan_vulnerability' && decision && final && row.finalized_by !== row.requested_by && row.finalized_by !== row.decided_by;
     case 'reported_completed':
     case 'reported_failed':
     case 'reported_not_performed': return decision && final;
