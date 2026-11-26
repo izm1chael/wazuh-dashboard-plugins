@@ -82,6 +82,16 @@ export function registerIncidentRoutes(router: IRouter) {
   }) } }, async (context, request, response) => respond(response, () => client(context).revokeIndicator(
     request.body.expected_revision, request.body.id, request.body.reason)));
 
+  router.post({ path: '/indexer/incident-indicators/record-sighting', validate: { body: schema.object({
+    expected_revision: catalogRevision, id: idSchema, observed_at: schema.string({ minLength: 20, maxLength: 24 }),
+    source: schema.string({ minLength: 1, maxLength: 256 }), count: schema.number({ min: 1, max: 1000000 }),
+  }) } }, async (context, request, response) => respond(response, () => client(context).recordIndicatorSighting(
+    request.body.expected_revision, request.body.id, request.body.observed_at, request.body.source, request.body.count)));
+  router.post({ path: '/indexer/incident-indicators/withdraw-sighting', validate: { body: schema.object({
+    expected_revision: catalogRevision, id: idSchema, sighting_revision: revisionSchema, reason: schema.string({ minLength: 1, maxLength: 1024 }),
+  }) } }, async (context, request, response) => respond(response, () => client(context).withdrawIndicatorSighting(
+    request.body.expected_revision, request.body.id, request.body.sighting_revision, request.body.reason)));
+
   router.post({
     path: '/indexer/incident-hunt/search',
     validate: { body: schema.object({
