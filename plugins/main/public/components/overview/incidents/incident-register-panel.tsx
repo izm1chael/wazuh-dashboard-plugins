@@ -18,10 +18,13 @@ export function IncidentRegisterPanel({ page, incident, disabled, command, openR
   const [custody, setCustody] = useState('');
   const [reason, setReason] = useState('');
   const [selected, setSelected] = useState('');
+  const [compareId, setCompareId] = useState('');
+  const [comparing, setComparing] = useState(false);
   let parsed: string[] | undefined;
   try { parsed = validateTags(tags.trim() ? tags.split(',').map(tag => tag.trim()) : []); } catch (_) { /* invalid input */ }
   if (!page.incident_relations || !page.evidence_register) return <EuiText size='s'>Investigation register unavailable on this indexer version.</EuiText>;
   const relations = page.incident_relations, evidence = page.evidence_register;
+  const compare = evidence.find(row => row.id === compareId);
   const blocked = disabled || page.activity_pending || page.observed_revision !== incident.revision;
   const safeTarget = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(target) && target !== incident.id;
   const changed = parsed && JSON.stringify(parsed) !== JSON.stringify([...(incident.tags ?? [])].sort());
@@ -41,7 +44,7 @@ export function IncidentRegisterPanel({ page, incident, disabled, command, openR
     {relations.map(row => <EuiPanel key={row.id} hasShadow={false} hasBorder>
       <EuiText size='s'><strong>{row.type.replace(/_/g, ' ')}</strong> · {row.target_id}<br />
         {row.reason}<br />{row.recorded_by} · {row.recorded_at}</EuiText>
-      {openRelated && <EuiButtonEmpty disabled={disabled && incident.status !== 'closed'} onClick={() => openRelated(row.target_id)}>Open referenced incident</EuiButtonEmpty>}
+      {openRelated && <EuiButtonEmpty onClick={() => openRelated(row.target_id)}>Open referenced incident</EuiButtonEmpty>}
       <EuiButtonEmpty disabled={blocked} onClick={() => { setSelected('relation:' + row.id); setReason(''); }}>Remove relation</EuiButtonEmpty>
     </EuiPanel>)}
     <EuiFormRow label='Related incident UUID'><EuiFieldText value={target} maxLength={36} disabled={blocked} onChange={e => setTarget(e.target.value)} /></EuiFormRow>
@@ -57,9 +60,14 @@ export function IncidentRegisterPanel({ page, incident, disabled, command, openR
         Custody reference: {row.custody_reference}<br />
         Recorded by {row.recorded_by} · {row.recorded_at}
         {row.state === 'withdrawn' && <><br />Withdrawn by {row.withdrawn_by} · {row.withdrawn_at} · {row.withdrawal_reason}</>}</EuiText>
-      <LocalEvidenceVerifier evidence={row} />
       {row.state === 'recorded' && <EuiButtonEmpty disabled={blocked} onClick={() => { setSelected('evidence:' + row.id); setReason(''); }}>Withdraw evidence attestation</EuiButtonEmpty>}
     </EuiPanel>)}
+    {evidence.length > 0 && <>
+      <EuiFormRow label='Evidence to compare locally'><EuiSelect value={compareId} disabled={comparing}
+        options={[{ value: '', text: 'Select an attestation' }, ...evidence.map(row => ({ value: row.id, text: row.label + ' · ' + row.id }))]}
+        onChange={e => setCompareId(e.target.value)} /></EuiFormRow>
+      {compare && <LocalEvidenceVerifier key={compare.id} evidence={compare} onBusy={setComparing} />}
+    </>}
     <EuiFormRow label='Artifact type'><EuiSelect value={type} disabled={blocked} options={EVIDENCE_TYPES.map(value => ({ value, text: value.replace(/_/g, ' ') }))} onChange={e => setType(e.target.value as EvidenceArtifactType)} /></EuiFormRow>
     <EuiFormRow label='Artifact label'><EuiFieldText value={label} maxLength={256} disabled={blocked} onChange={e => setLabel(e.target.value)} /></EuiFormRow>
     <EuiFormRow label='Artifact SHA-256'><EuiFieldText value={digest} maxLength={64} disabled={blocked} onChange={e => setDigest(e.target.value)} /></EuiFormRow>
