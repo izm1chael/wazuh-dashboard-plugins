@@ -1,3 +1,4 @@
+import { PLAYBOOKS as AUTOMATION_PLAYBOOKS, STATUSES as AUTOMATION_STATUSES } from '../../common/incidents/automation-contract';
 import { INDICATOR_TYPES, INDICATOR_TLP } from '../../common/incidents/indicator-contract';
 import { HUNT_FIELDS } from '../../common/incidents/hunt-contract';
 import { EVIDENCE_TYPES, RELATION_TYPES } from '../../common/incidents/contracts';
@@ -60,6 +61,34 @@ async function respond<T extends object>(
 let historyRunning = false;
 let huntRunning = false;
 export function registerIncidentRoutes(router: IRouter) {
+  const tagArray = schema.arrayOf(schema.string({ minLength: 1, maxLength: 64 }), { maxSize: 25 });
+  const automationActions = schema.object({
+    assign_to: schema.maybe(schema.string({ minLength: 1, maxLength: 1024 })),
+    raise_severity: schema.maybe(severitySchema), raise_priority: schema.maybe(prioritySchema),
+    add_tags: schema.maybe(tagArray), create_task: schema.maybe(schema.string({ minLength: 1, maxLength: 1024 })),
+    apply_playbook: schema.maybe(schema.oneOf(AUTOMATION_PLAYBOOKS.map(value => schema.literal(value)))),
+  });
+  router.post({ path: '/indexer/incident-automation/save', validate: { body: schema.object({
+    policy_id: idSchema, policy_version: revisionSchema,
+    rules: schema.arrayOf(schema.object({
+      id: schema.string({ minLength: 1, maxLength: 64 }),
+      trigger: schema.oneOf([schema.literal('created'), schema.literal('updated')]),
+      minimum_severity: severitySchema, status: schema.oneOf(AUTOMATION_STATUSES.map(value => schema.literal(value))),
+      minimum_findings: schema.number({ min: 0, max: 1000 }), unassigned_only: schema.boolean(),
+      required_tags: tagArray, actions: automationActions,
+    }), { minSize: 1, maxSize: 10 }),
+  }) } }, async (context, request, response) => respond(response, () => client(context).saveAutomation(
+    JSON.parse(JSON.stringify(request.body)))));
+  router.post({ path: '/indexer/incident-automation/read', validate: { body: schema.object({
+    policy_id: idSchema, policy_version: revisionSchema,
+  }) } }, async (context, request, response) => respond(response, () => client(context).readAutomation(request.body)));
+  router.post({ path: '/indexer/incident-automation/preview', validate: { body: schema.object({
+    policy_id: idSchema, policy_version: revisionSchema, incident_id: idSchema,
+  }) } }, async (context, request, response) => respond(response, () => client(context).previewAutomation(
+    { policy_id: request.body.policy_id, policy_version: request.body.policy_version }, request.body.incident_id)));
+  router.post({ path: '/indexer/incident-automation/history', validate: { body: schema.object({ incident_id: idSchema }) } },
+    async (context, request, response) => respond(response, () => client(context).automationHistory(request.body.incident_id)));
+
   router.post({ path: '/indexer/incident-analytics/status', validate: { body: schema.object({
     policy_id: idSchema, policy_version: revisionSchema,
     from: schema.string({ minLength: 20, maxLength: 20 }),
