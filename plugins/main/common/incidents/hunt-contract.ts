@@ -9,8 +9,11 @@ export interface HuntReport extends HuntInput {
   scope: 'caller_visible_findings_exact_terms'; rows: HuntRow[]; match_count: number;
 }
 const DAY = 86400000;
-const validTime = (s: unknown): s is string => typeof s === 'string' &&
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/.test(s) && Number.isFinite(Date.parse(s));
+const validTime = (s: unknown): s is string => {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/.test(s)) return false;
+  const time = Date.parse(s);
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 19) === s.slice(0, 19);
+};
 const safe = (v: unknown, max: number): v is string =>
   typeof v === 'string' && v.length <= max && !!v.trim() && !/[\x00-\x1f\x7f-\x9f]/.test(v);
 const exact = (v: object, keys: string[]) => Object.keys(v).length === keys.length &&
@@ -31,7 +34,8 @@ export function validateHunt(input: HuntInput): HuntInput {
   if (!input || !HUNT_FIELDS.includes(input.field) || !Array.isArray(input.values) ||
       input.values.length < 1 || input.values.length > 20 ||
       !input.values.every(v => validHuntValue(input.field, v)) || new Set(input.values).size !== input.values.length ||
-      !validTime(input.from) || !validTime(input.until)) return fail();
+      !validTime(input.from) || !validTime(input.until) ||
+      /\.\d{4,}Z$/.test(input.from) || /\.\d{4,}Z$/.test(input.until)) return fail();
   const start = Date.parse(input.from), end = Date.parse(input.until);
   if (start >= end || end - start > 7 * DAY || start < Date.UTC(2000, 0, 1) || end > Date.UTC(2100, 0, 1)) return fail();
   // Send normalized millisecond UTC timestamps; no sub-millisecond browser ambiguity.
