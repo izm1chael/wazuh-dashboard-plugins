@@ -78,6 +78,8 @@ function commandBody(command: IndexerIncidentCommand): object {
         digest_sha256: command.digest_sha256, ...(command.report_sha256 === undefined ? {} : { report_sha256: command.report_sha256 }),
         assessment_mode: command.assessment_mode,
         assessment_rating: command.assessment_rating, hypothesis_review: command.hypothesis_review };
+    case 'save-hunt-bookmark': return { label: command.label, query: validateHunt(command.query) };
+    case 'withdraw-hunt-bookmark': return { bookmark_id: command.bookmark_id, reason: command.reason };
     case 'start-workflow': return { template_id: command.template_id, version: command.version, scope: command.scope, reason: command.reason };
     case 'advance-workflow': return { run_id: command.run_id };
     case 'cancel-workflow': return { run_id: command.run_id, reason: command.reason };
