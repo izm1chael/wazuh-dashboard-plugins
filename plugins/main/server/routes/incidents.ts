@@ -143,8 +143,8 @@ export function registerIncidentRoutes(router: IRouter) {
     id:schema.string({minLength:64,maxLength:64}),pack_json:schema.string({minLength:1,maxLength:500000}),
     decision:schema.oneOf([schema.literal('approved'),schema.literal('rejected')]),
     reason:schema.string({minLength:1,maxLength:1024}),
-    deployer:schema.oneOf([schema.string({minLength:1,maxLength:1024}),schema.literal(null)]),
-    expires:schema.oneOf([schema.string({minLength:20,maxLength:20}),schema.literal(null)]),
+    // Null is an explicit rejection value; the shared command validator enforces exact string/null semantics.
+    deployer:schema.any(), expires:schema.any(),
   })}},async(context,request,response)=>respond(response,()=>client(context).reviewRelease(request.body)));
 
   router.post({ path: '/indexer/incident-behaviour/observations/day', validate: { body: schema.object({
