@@ -7,6 +7,7 @@ import {
   Logger,
 } from '../../../src/core/server';
 import { registerRoutes } from './routes';
+import { registerIncidentAssessmentRoute } from './routes/incident-assessment';
 import {
   setApiKeyCipher,
   setOutOfCreditsMessage,
@@ -119,6 +120,7 @@ export class WazuhAiAssistantPlugin
 
     const router = core.http.createRouter();
     registerRoutes(router, this.logger);
+    if (pluginConfig.incidentAssessment) registerIncidentAssessmentRoute(router, pluginConfig.incidentAssessment);
 
     return {};
   }

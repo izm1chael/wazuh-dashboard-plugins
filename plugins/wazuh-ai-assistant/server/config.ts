@@ -3,6 +3,17 @@ import { PluginConfigDescriptor } from '../../../src/core/server';
 
 export const configSchema = schema.object({
   enabled: schema.boolean({ defaultValue: true }),
+  // Server-only explicit destination and disclosure allowlist. Absent means no assessment route.
+  incidentAssessment: schema.maybe(schema.object({
+    agenticEnabled: schema.boolean({ defaultValue: false }),
+    historicalOutcomeEnabled: schema.boolean({ defaultValue: false }),
+    privateReportSavingEnabled: schema.boolean({ defaultValue: false }),
+    providerId: schema.string({ minLength: 1, maxLength: 128 }),
+    baseUrl: schema.string({ minLength: 1, maxLength: 2048 }),
+    model: schema.string({ minLength: 1, maxLength: 256 }),
+    allowedTlp: schema.arrayOf(schema.oneOf([schema.literal('TLP:CLEAR'), schema.literal('TLP:GREEN'),
+      schema.literal('TLP:AMBER')]), { minSize: 1, maxSize: 3, defaultValue: ['TLP:CLEAR'] }),
+  })),
   /**
    * Base64-encoded 32-byte AES-256 key used to encrypt the `wazuh-ai-assistant-provider` saved
    * object's `apiKey` attribute at rest (server/crypto/api-key-cipher.ts). Generate with:

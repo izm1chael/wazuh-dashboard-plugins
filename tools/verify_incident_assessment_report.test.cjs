@@ -1,0 +1,13 @@
+const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
+const { canonical, verify } = require('./verify_incident_assessment_report.cjs');
+const core = { schema_version: 1, model: 'local-model', assessed_at: '2026-11-26T12:00:00Z' };
+const assessment = { observed_revision: 2, recommendations: [{ action: 'review_detection', evidence_refs: ['F1'] }] };
+const hash = createHash('sha256').update(canonical({ provenance: core, assessment })).digest('hex');
+const envelope = { provenance: { ...core, report_hash_serialization: 'sorted-json-v1', report_sha256: hash }, assessment };
+assert.equal(verify(envelope).externally_compared, false);
+assert.equal(verify(envelope, hash).externally_compared, true);
+assert.throws(() => verify(envelope, 'a'.repeat(64)));
+assert.throws(() => verify({ ...envelope, assessment: { ...assessment, observed_revision: 3 } }));
+assert.equal(canonical({ b: 2, a: 1 }), canonical({ a: 1, b: 2 }));
+console.log('5 report fingerprint assertions passed');

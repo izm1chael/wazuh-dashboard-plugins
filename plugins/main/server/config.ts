@@ -25,6 +25,7 @@ const disabledSettingSchema = schema.string({
 });
 
 export const configSchema = schema.object({
+  experimentalIncidentsEnabled: schema.boolean({ defaultValue: false }),
   disabledSettings: schema.arrayOf(disabledSettingSchema, { defaultValue: [] }),
 });
 

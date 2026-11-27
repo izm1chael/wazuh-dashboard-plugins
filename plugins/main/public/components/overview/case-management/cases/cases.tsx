@@ -1,4 +1,7 @@
 import React from 'react';
+import { EuiButton, EuiSpacer } from '@elastic/eui';
+import { useHistory } from 'react-router-dom';
+import { getCapabilities } from '../../../../kibana-services';
 import { InventoryDashboardTable } from '../../../common/dashboards';
 import {
   CasesDataSource,
@@ -14,7 +17,15 @@ const CASES_DASHBOARD_PANELS = [
 ];
 
 export const CaseManagementCases = () => {
+  const history = useHistory();
   return (
+    <>
+      {getCapabilities()?.wazuh?.experimentalIncidents && (
+        <>
+          <EuiButton onClick={() => history.push('/incidents')}>Open experimental incidents</EuiButton>
+          <EuiSpacer size='m' />
+        </>
+      )}
     <InventoryDashboardTable
       DataSource={CasesDataSource}
       DataSourceRepositoryCreator={FindingsDataSourceRepository}
@@ -24,5 +35,6 @@ export const CaseManagementCases = () => {
       tableId='case-management-cases'
       additionalDocumentDetailsTabs={caseManagementDocumentDetailsTabs}
     />
+    </>
   );
 };

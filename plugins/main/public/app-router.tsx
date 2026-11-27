@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { Router, Route, Switch, Redirect } from 'react-router-dom';
 import { ToolsRouter } from './components/tools/tools-router';
-import { getWazuhCorePlugin, getWzMainParams } from './kibana-services';
+import { getCapabilities, getWazuhCorePlugin, getWzMainParams } from './kibana-services';
+import { IncidentWorkspace } from './components/overview/incidents/incident-workspace';
 import { updateCurrentPlatform } from './redux/actions/appStateActions';
 import {
   fetchCcsStatusForApplicationMount,
@@ -118,6 +119,9 @@ export const Application = withGuardAsync(
       <main className='wz-app-main'>
         <WzAppHeading />
         <Switch>
+          {getCapabilities()?.wazuh?.experimentalIncidents && (
+            <Route path='/incidents/:incidentId?' exact component={IncidentWorkspace} />
+          )}
           <Route
             path={`/${SECTIONS.AGENTS_PREVIEW}/deploy`}
             exact

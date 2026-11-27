@@ -1,0 +1,27 @@
+# Incident investigation register and external evidence attestations
+
+Status: experimental development candidate; not production qualified. Requires matching dashboard and indexer builds.
+
+## Contract and security boundaries
+
+- Up to 25 unique lower-case tags (ASCII letters, digits, underscores and hyphens; max 64 characters). Canonically sorted, exact keyword search via the existing queue search with `tag:phishing`. This prefix is now reserved; normal search remains unchanged otherwise. Tags are visible to authorized incident readers.
+- Up to 50 directional incident relationship assertions: related, possible duplicate, possible same campaign. Canonical target UUID, one active assertion per target, no self reference, analyst rationale, server-derived actor/time/revision. Removal is audited. No target existence lookup under privileged context, reciprocal relationship, merge, duplicate closure or automated inference. Opening a reference uses the existing current-user incident detail path and can fail if unavailable.
+- Up to 50 external evidence attestations, including withdrawn entries. Types: log export, disk image, memory image, network capture, screenshot and other. Store analyst-supplied lowercase SHA-256, label, opaque external custody reference, server attribution and immutable identity. Duplicate digest/custody pair is rejected even after withdrawal; corrections require an independently distinct evidence identity. Withdrawal preserves original metadata and records actor/time/reason. No upload, raw data acquisition, file retrieval, signature, retention guarantee or custody verification.
+- All five commands are fixed, owner-only, revision-checked, use existing collaboration grant and aggregate CAS/outbox. Closed incidents require reopening before modification. Tags are projected in summary; relationship and evidence arrays are returned only by collaboration read. This is the existing single-SOC incident-read boundary, not per-incident ACL or forensic-vault access control. Analysts must not enter source-restricted content, secrets or sensitive URLs. AI assessment does not ingest these records.
+- Browser local comparison: select one registered artifact and choose a local file of at most 32 MiB; SHA-256 via WebCrypto secure context. Neither bytes nor computed digest are sent to an API or saved. A match only means bytes match the supplied digest, not that the original evidence was authentic or preserved. Larger artifacts require separate forensic tooling.
+
+## Upgrade and qualification
+
+Additive mappings: tags keyword; incident_relations and evidence_register disabled objects (stored in source, not individually indexed). Existing records without fields are treated as empty. Existing index mappings must be upgraded before writes; template changes alone do not retrofit indices. No mixed-version qualification. Keep feature disabled until both plugins and actual mappings are qualified.
+
+1. Execute full indexer Gradle test/check, Python storage tests, dashboard Jest and builds. Test both new and pre-existing data.
+2. Verify actual role matrix: owner with collaboration permission, non-owner with permission, owner without permission, closed incident, stale revision, pending audit, concurrent register/remove/withdraw. Check exactly one attributed audit event per success and preserved old state on conflict. Confirm ordinary summary excludes registers, direct backing-index reads/writes remain denied, and no source data is copied.
+3. Verify exact tag filter, empty/duplicate/malformed/oversized tags and backward compatibility. Verify normal search, pagination and reserved tag prefix. Verify relation assertion, duplicate/self rejection, removal audit, target absent/denied and standard navigation. No target lookup on write.
+4. Verify external register limits, forged metadata rejection, duplicate identity, withdrawal permanence and original SHA preservation. Confirm no actual artifact fetch, upload or custody claim. Compare known small file, mismatched file, zero-byte file, >32 MiB and insecure context; inspect network and browser state, including navigation/unmount and late results. Verify no API call from file selection.
+5. Verify malformed response projections fail closed, including extra fields, wrong incident ID/revision, malformed timestamps, duplicate targets/digests and withdrawal attribution. Check loading/stale/pending states and local verifier concurrency. Confirm no exposure via AI provider payloads.
+
+Cloud qualification: 16 source-level cross-repository assertions passed. Exact committed validator blob `432abe5d296ac9def8aadb18ca2cf0335b757757` compiled using `tsc --strict --target es2020 --module commonjs` against relevant shared contract shapes, and 23 standalone Node assertions passed. Full Java/Jest/build, actual OpenSearch, browser/WebCrypto, mapping upgrade and RBAC are unqualified. No production or upstream changes.
+
+## Remaining gaps
+
+This is metadata and an external artifact manifest, not a forensic evidence store, shared incident graph, global hunting engine or threat intelligence platform. Actual capture receipts remain internal audit; retained source snapshots need a separately designed authorization, encryption and retention model. Future work: permission-aware exact entity hunting, IOC enrichment and observed related-case discovery, validated duplicate relationships, and supervisor escalation.
