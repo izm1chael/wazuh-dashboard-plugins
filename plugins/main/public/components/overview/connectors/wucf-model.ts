@@ -54,6 +54,7 @@ export type Health = {
   acknowledged_pages: number;
   acknowledged_events: number;
   pending: boolean;
+  delivery_boundary: 'unqualified_adapter' | 'local_spool';
   coverage: 'unknown';
   native_delivery_qualified: false;
 };
@@ -61,7 +62,7 @@ export type Health = {
 const fields = [
   'schema_version', 'environment', 'instance', 'dataset', 'provider', 'revision',
   'observed_at', 'state', 'execution_status', 'acknowledged_pages',
-  'acknowledged_events', 'pending', 'coverage', 'native_delivery_qualified',
+  'acknowledged_events', 'pending', 'delivery_boundary', 'coverage', 'native_delivery_qualified',
 ];
 const id = /^[A-Za-z0-9_.:-]{1,128}$/;
 const statuses = [
@@ -77,6 +78,7 @@ export function parseHealth(value: unknown, environment: string): Health | null 
   for (const key of ['environment', 'instance', 'dataset', 'provider']) {
     if (typeof row[key] !== 'string' || !id.test(row[key] as string)) return null;
   }
+  if (row.delivery_boundary !== 'unqualified_adapter' && row.delivery_boundary !== 'local_spool') return null;
   if (!catalogue.some(item => item.provider === row.provider && item.dataset === row.dataset)) return null;
   if (typeof row.revision !== 'string' || !/^[a-f0-9]{64}$/.test(row.revision)) return null;
   if (typeof row.observed_at !== 'string' || row.observed_at.length > 40 || !/(Z|[+-]00:00)$/.test(row.observed_at) || !Number.isFinite(Date.parse(row.observed_at))) return null;
