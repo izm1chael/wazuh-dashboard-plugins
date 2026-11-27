@@ -130,6 +130,23 @@ export function registerIncidentRoutes(router: IRouter) {
   }) } }, async (context, request, response) => respond(response, () => client(context).withdrawIndicatorSighting(
     request.body.expected_revision, request.body.id, request.body.sighting_revision, request.body.reason)));
 
+  router.post({ path: '/indexer/detection-releases/day', validate:{body:schema.object({
+    day:schema.string({minLength:20,maxLength:20}),
+  })}},async(context,request,response)=>respond(response,()=>client(context).releaseDay(request.body.day)));
+  router.post({ path: '/indexer/detection-releases/read', validate:{body:schema.object({
+    id:schema.string({minLength:64,maxLength:64}),
+  })}},async(context,request,response)=>respond(response,()=>client(context).readRelease(request.body.id)));
+  router.post({ path: '/indexer/detection-releases/submit', validate:{body:schema.object({
+    pack_json:schema.string({minLength:1,maxLength:500000}),
+  })}},async(context,request,response)=>respond(response,()=>client(context).submitRelease(request.body.pack_json)));
+  router.post({ path: '/indexer/detection-releases/review', validate:{body:schema.object({
+    id:schema.string({minLength:64,maxLength:64}),pack_json:schema.string({minLength:1,maxLength:500000}),
+    decision:schema.oneOf([schema.literal('approved'),schema.literal('rejected')]),
+    reason:schema.string({minLength:1,maxLength:1024}),
+    deployer:schema.oneOf([schema.string({minLength:1,maxLength:1024}),schema.literal(null)]),
+    expires:schema.oneOf([schema.string({minLength:20,maxLength:20}),schema.literal(null)]),
+  })}},async(context,request,response)=>respond(response,()=>client(context).reviewRelease(request.body)));
+
   router.post({ path: '/indexer/incident-behaviour/observations/day', validate: { body: schema.object({
     day: schema.string({ minLength: 20, maxLength: 20 }),
   }) } }, async (context, request, response) => respond(response, () => client(context).observationDay(request.body.day)));

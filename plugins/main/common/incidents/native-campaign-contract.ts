@@ -23,7 +23,7 @@ const int=(v:unknown,min=0,max=30000):v is number=>typeof v==='number'&&Number.i
 const fail=():never=>{throw new Error('Invalid campaign review pack');};
 const metricKeys=['positive','negative','unknown','lost_positive','gained_positive','new_false_positive','removed_false_positive',
   'baseline_tp','baseline_fp','baseline_tn','baseline_fn','candidate_tp','candidate_fp','candidate_tn','candidate_fn'];
-function metrics(m:CampaignMetrics,population:number){
+export function metrics(m:CampaignMetrics,population:number){
   if(!m||!exact(m,metricKeys)||!Object.values(m).every(v=>int(v,0,population))||
     m.positive+m.negative+m.unknown!==population||
     m.baseline_tp+m.baseline_fn!==m.positive||m.candidate_tp+m.candidate_fn!==m.positive||

@@ -1,3 +1,6 @@
+import { createHash } from 'crypto';
+import { parseCampaignPack } from '../../../common/incidents/native-campaign-contract';
+import { DetectionRelease, ReleaseDay, ReleaseReviewInput, evidenceFromPack, releaseHash, sameReleaseEvidence, validateRelease, validateReleaseDay, validateReleasePage, validateReviewInput } from '../../../common/incidents/detection-release-contract';
 import { EventProfile, EventProfileInput, validateEventProfileInput, validateEventProfile } from '../../../common/incidents/event-behaviour-contract';
 import { BehaviourObservation, ObservationPage, ObservationReview, ObservationPromotion, validateObservationDay, validateObservationPage, validateObservationReview, validateObservationPromotion, validateReviewResult, validatePromotionResult } from '../../../common/incidents/behaviour-observation-contract';
 import { RuleBehaviourInput, RuleBehaviourReport, validateRuleBehaviour, validateRuleBehaviourReport } from '../../../common/incidents/rule-behaviour-contract';
@@ -181,6 +184,52 @@ export class IndexerIncidentClient {
     const { body } = await this.transport.request<CatalogMutation>({ method: 'POST', path: '/_plugins/_setup/incident-indicators/save',
       body: { operation: 'withdraw-sighting', expected_revision: expected, id, sighting_revision: sightingRevision, reason } });
     return validateMutation(body, expected, 1);
+  }
+
+  async releaseDay(day: string): Promise<ReleaseDay> {
+    try { validateReleaseDay(day); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<ReleaseDay>({method:'POST',path:'/_plugins/_setup/detection-releases/day',body:{day}});
+    return validateReleasePage(body,day);
+  }
+
+  async readRelease(id:string): Promise<DetectionRelease> {
+    try { releaseHash(id); } catch (_) { throw { statusCode:400 }; }
+    const { body } = await this.transport.request<DetectionRelease>({method:'POST',path:'/_plugins/_setup/detection-releases/read',body:{id}});
+    const row=validateRelease(body);
+    if(row.id!==id)throw Error('Release identity mismatch');
+    return row;
+  }
+
+  async submitRelease(packJson:string):Promise<DetectionRelease> {
+    let input;
+    try {
+      const pack=parseCampaignPack(packJson),digest=createHash('sha256').update(packJson,'utf8').digest('hex');
+      input={id:pack.review_plan_sha256,evidence:evidenceFromPack(pack,digest)};
+      if(Buffer.byteLength(JSON.stringify(input),'utf8')>16384)throw Error('Over budget');
+    } catch (_) { throw {statusCode:400}; }
+    const { body }=await this.transport.request<DetectionRelease>({method:'POST',path:'/_plugins/_setup/detection-releases/submit',body:input});
+    const row=validateRelease(body);
+    if(row.id!==input.id||row.state!=='submitted'||!sameReleaseEvidence(row.evidence,input.evidence))throw Error('Release submission mismatch');
+    return row;
+  }
+
+  async reviewRelease(input:ReleaseReviewInput):Promise<DetectionRelease> {
+    let pack,evidence;
+    try {
+      validateReviewInput(input);
+      pack=parseCampaignPack(input.pack_json);
+      evidence=evidenceFromPack(pack,createHash('sha256').update(input.pack_json,'utf8').digest('hex'));
+      if(pack.review_plan_sha256!==input.id)throw Error('Plan mismatch');
+    }catch(_){throw {statusCode:400};}
+    const old=await this.readRelease(input.id);
+    if(old.state!=='submitted'||!sameReleaseEvidence(old.evidence,evidence))throw {statusCode:409};
+    const {id,decision,reason,deployer,expires}=input;
+    const { body }=await this.transport.request<DetectionRelease>({method:'POST',path:'/_plugins/_setup/detection-releases/review',
+      body:{id,expected_revision:1,pack_sha256:evidence.pack_sha256,decision,reason,deployer,expires}});
+    const row=validateRelease(body);
+    if(row.id!==id||row.state!==decision||row.review?.reason!==reason||row.review?.deployer!==deployer||
+      row.review?.expires!==expires||!sameReleaseEvidence(row.evidence,evidence))throw Error('Release review mismatch');
+    return row;
   }
 
   async observationDay(day: string): Promise<ObservationPage> {
