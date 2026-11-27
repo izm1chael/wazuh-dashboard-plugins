@@ -1,0 +1,9 @@
+{
+  "id": "wadeReview",
+  "version": "5.0.0-10",
+  "opensearchDashboardsVersion": "opensearchDashboards",
+  "server": false,
+  "ui": true,
+  "requiredPlugins": [],
+  "optionalPlugins": []
+}
