@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSelect, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import { NativeReplayReceipt, ReplayLabels, ReplayLabel, parseNativeReplay, validateReplayLabels, pairedReview } from '../../../../common/incidents/native-replay-contract';
 
+import { NativeCampaignReview } from './native-campaign-review';
+
 export function NativeReplayPanel({back}:{back:()=>void}){
   const [raw,setRaw]=useState(''),[labelRaw,setLabelRaw]=useState('');
   const [receipt,setReceipt]=useState<NativeReplayReceipt>(),[labels,setLabels]=useState<ReplayLabels>();
@@ -41,6 +43,8 @@ export function NativeReplayPanel({back}:{back:()=>void}){
       Receipts and labels are local operator assertions, not signatures or promotion authorization. Rule-content fingerprints do not establish decoder or mapping parity.
       Keep Test → Custom frozen during testing; use the native workflow after independent review.
     </EuiCallOut>
+    <EuiSpacer size='m'/>
+    <NativeCampaignReview />
     <EuiSpacer size='m'/>
     <EuiFormRow label='Native replay receipt JSON'><EuiTextArea value={raw} maxLength={8000000} onChange={e=>{setRaw(e.target.value);setReceipt(undefined);setLabels(undefined);setError('');}} /></EuiFormRow>
     <EuiButton disabled={!raw} onClick={load}>Inspect receipt</EuiButton>
