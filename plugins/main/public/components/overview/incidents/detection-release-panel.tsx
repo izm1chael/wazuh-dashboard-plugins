@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { EuiBasicTable, EuiBasicTableColumn, EuiButton, EuiButtonEmpty, EuiCallOut, EuiFieldText, EuiFormRow, EuiPanel, EuiSelect, EuiSpacer, EuiText, EuiTextArea, EuiTitle } from '@elastic/eui';
 import { DetectionRelease, ReleaseDay, ReleaseReviewInput, releaseHash, validateRelease, validateReleaseDay, validateReleasePage, validateReviewInput } from '../../../../common/incidents/detection-release-contract';
 import { parseCampaignPack } from '../../../../common/incidents/native-campaign-contract';
+import { PostReleaseReviewPanel } from './post-release-review-panel';
 import { getHttp } from '../../../kibana-services';
 
 const ROOT='/indexer/detection-releases';
@@ -107,6 +108,7 @@ export function DetectionReleasePanel({back,backtesting}:{back:()=>void;backtest
         {row.reservation&&<p>One-use reservation by {row.reservation.actor} at {row.reservation.at}; never retry this plan blindly.</p>}
         {row.outcome&&<p>Native status {row.outcome.native_status}, recorded {row.outcome.at}. Native acceptance does not verify deployed detection behaviour or detector synchronisation.</p>}
       </EuiText>
+      {row.state==='native_reported'&&[200,202].includes(row.outcome?.native_status??0)&&<PostReleaseReviewPanel key={row.id} release={row}/>}
       {row.state==='submitted'&&<>
         <EuiFormRow label='Independent review decision'><EuiSelect value={decision} disabled={busy} options={[{value:'approved',text:'Approve exact release'},{value:'rejected',text:'Reject permanently'}]}
           onChange={e=>{setDecision(e.target.value as 'approved'|'rejected');resetConfirm();}}/></EuiFormRow>
