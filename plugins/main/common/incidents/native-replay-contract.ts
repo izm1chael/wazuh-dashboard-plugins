@@ -31,7 +31,7 @@ export function validateNativeReplay(raw:NativeReplayReceipt):NativeReplayReceip
     !uuid(raw.scope.integration)||![raw.scope.cluster,raw.scope.space,raw.scope.dataset].every(v=>safe(v))||
     !time(raw.scope.from)||!time(raw.scope.until)||Date.parse(raw.scope.until)<=Date.parse(raw.scope.from)||
     Date.parse(raw.scope.until)-Date.parse(raw.scope.from)>86400000||Date.parse(raw.observed_at)<Date.parse(raw.scope.until)+120000||
-    !Array.isArray(raw.rows)||!raw.rows.length||raw.rows.length>100||raw.event_count!==raw.rows.length)return fail();
+    !Array.isArray(raw.rows)||raw.rows.length>100||raw.event_count!==raw.rows.length)return fail();
   const seen=new Set<string>();let base=0,candidate=0,gained=0,lost=0;
   for(const row of raw.rows){
     if(!row||!exact(row,['index','id','source_sha256','baseline','candidate','gained','lost'])||
