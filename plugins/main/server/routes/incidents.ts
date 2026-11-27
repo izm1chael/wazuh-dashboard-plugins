@@ -1,3 +1,4 @@
+import { EVENT_MODES } from '../../common/incidents/event-behaviour-contract';
 import { OBSERVATION_DECISIONS } from '../../common/incidents/behaviour-observation-contract';
 import { BEHAVIOUR_FIELDS } from '../../common/incidents/behaviour-contract';
 import { PLAYBOOKS as AUTOMATION_PLAYBOOKS, STATUSES as AUTOMATION_STATUSES } from '../../common/incidents/automation-contract';
@@ -140,6 +141,21 @@ export function registerIncidentRoutes(router: IRouter) {
   router.post({ path: '/indexer/incident-behaviour/observations/promote', validate: { body: schema.object({
     id: idSchema, expected_revision: revisionSchema,
   }) } }, async (context, request, response) => respond(response, () => client(context).promoteObservation(request.body)));
+
+  router.post({
+    path: '/indexer/incident-behaviour/event-assess',
+    validate: { body: schema.object({
+      mode: schema.oneOf(EVENT_MODES.map(value => schema.literal(value))),
+      cluster: schema.string({ minLength: 1, maxLength: 256 }), space: schema.string({ minLength: 1, maxLength: 256 }),
+      dataset: schema.string({ minLength: 1, maxLength: 256 }), subject: schema.string({ minLength: 1, maxLength: 256 }),
+      day: schema.string({ minLength: 20, maxLength: 20 }),
+    }) },
+  }, async (context, request, response) => respond(response, async () => {
+    if (huntRunning) throw { statusCode: 429 };
+    huntRunning = true;
+    try { return await client(context).assessEventBehaviour(request.body); }
+    finally { huntRunning = false; }
+  }));
 
   router.post({
     path: '/indexer/incident-behaviour/rule-assess',

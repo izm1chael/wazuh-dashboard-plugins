@@ -1,3 +1,4 @@
+import { EventProfile, EventProfileInput, validateEventProfileInput, validateEventProfile } from '../../../common/incidents/event-behaviour-contract';
 import { BehaviourObservation, ObservationPage, ObservationReview, ObservationPromotion, validateObservationDay, validateObservationPage, validateObservationReview, validateObservationPromotion, validateReviewResult, validatePromotionResult } from '../../../common/incidents/behaviour-observation-contract';
 import { RuleBehaviourInput, RuleBehaviourReport, validateRuleBehaviour, validateRuleBehaviourReport } from '../../../common/incidents/rule-behaviour-contract';
 import { BehaviourReport, validateBehaviourInput, validateBehaviourReport } from '../../../common/incidents/behaviour-contract';
@@ -204,6 +205,15 @@ export class IndexerIncidentClient {
       method: 'POST', path: '/_plugins/_setup/incident-behaviour/observations/promote', body: input,
     });
     return validatePromotionResult(body,input);
+  }
+
+  async assessEventBehaviour(input: EventProfileInput): Promise<EventProfile> {
+    let payload: EventProfileInput;
+    try { payload = validateEventProfileInput(input); } catch (_) { throw { statusCode: 400 }; }
+    const { body } = await this.transport.request<EventProfile>({
+      method: 'POST', path: '/_plugins/_setup/incident-behaviour/event-assess', body: payload,
+    });
+    return validateEventProfile(body,payload);
   }
 
   async assessRuleBehaviour(input: RuleBehaviourInput): Promise<RuleBehaviourReport> {
